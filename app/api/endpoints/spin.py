@@ -20,7 +20,7 @@ SPIN_REWARDS = [
 @router.post("/wheel")
 def spin_wheel(
     uid: str,
-    restaurant_id: int,
+    restaurant_id: str,
     db: Session = Depends(get_db),
     current_user: TokenData = Depends(get_current_user)
 ):

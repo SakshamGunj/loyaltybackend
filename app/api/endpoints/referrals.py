@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/referrals", tags=["referrals"])
 @router.get("/code")
 def get_referral_code(
     uid: str,
-    restaurant_id: int,
+    restaurant_id: str,
     db: Session = Depends(get_db),
     current_user: TokenData = Depends(get_current_user)
 ):
@@ -43,7 +43,7 @@ def get_referral_code(
 def apply_referral(
     referral_code: str,
     referred_uid: str,
-    restaurant_id: int,
+    restaurant_id: str,
     db: Session = Depends(get_db),
     current_user: TokenData = Depends(get_current_user)
 ):

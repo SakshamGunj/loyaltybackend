@@ -12,7 +12,7 @@ class User(Base):
 
 class Restaurant(Base):
     __tablename__ = "restaurants"
-    restaurant_id = Column(Integer, primary_key=True, index=True)
+    restaurant_id = Column(String, primary_key=True, index=True)
     restaurant_name = Column(String, index=True)
     offers = Column(JSON)
     points_per_rupee = Column(Float)
@@ -30,7 +30,7 @@ class Loyalty(Base):
     __tablename__ = "loyalty"
     id = Column(Integer, primary_key=True, index=True)
     uid = Column(String, ForeignKey("users.uid"), index=True)
-    restaurant_id = Column(Integer, ForeignKey("restaurants.restaurant_id"), index=True)
+    restaurant_id = Column(String, ForeignKey("restaurants.restaurant_id"), index=True)
     total_points = Column(Integer, default=0)
     restaurant_points = Column(Integer, default=0)
     tier = Column(String, default="Bronze")
@@ -47,7 +47,7 @@ class Submission(Base):
     __tablename__ = "submissions"
     submission_id = Column(Integer, primary_key=True, index=True)
     uid = Column(String, ForeignKey("users.uid"), index=True)
-    restaurant_id = Column(Integer, ForeignKey("restaurants.restaurant_id"), index=True)
+    restaurant_id = Column(String, ForeignKey("restaurants.restaurant_id"), index=True)
     amount_spent = Column(Float)
     points_earned = Column(Integer)
     submitted_at = Column(DateTime, default=datetime.datetime.utcnow)
@@ -56,7 +56,7 @@ class ClaimedReward(Base):
     __tablename__ = "claimed_rewards"
     id = Column(Integer, primary_key=True, index=True)
     uid = Column(String, ForeignKey("users.uid"), index=True)
-    restaurant_id = Column(Integer, ForeignKey("restaurants.restaurant_id"), index=True)
+    restaurant_id = Column(String, ForeignKey("restaurants.restaurant_id"), index=True)
     reward_name = Column(String)
     threshold_id = Column(Integer, nullable=True)
     whatsapp_number = Column(String, nullable=True)

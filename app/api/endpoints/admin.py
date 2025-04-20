@@ -7,7 +7,7 @@ from typing import List
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 @router.get("/")
-def admin_dashboard(restaurant_id: int = None, db: Session = Depends(get_db)):
+def admin_dashboard(restaurant_id: str = None, db: Session = Depends(get_db)):
     # Filter by restaurant if provided
     users = crud.list_loyalties(db)
     submissions = crud.list_submissions(db)
@@ -21,7 +21,7 @@ def admin_dashboard(restaurant_id: int = None, db: Session = Depends(get_db)):
     }
 
 @router.get("/{restaurant_id}/user/{uid}")
-def admin_user_detail(restaurant_id: int, uid: str, db: Session = Depends(get_db)):
+def admin_user_detail(restaurant_id: str, uid: str, db: Session = Depends(get_db)):
     loyalty = crud.get_loyalty(db, uid, restaurant_id)
     claimed_rewards = crud.list_claimed_rewards(db, uid=uid)
     submissions = crud.list_submissions(db, uid=uid)

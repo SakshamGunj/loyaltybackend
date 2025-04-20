@@ -12,14 +12,31 @@ def create_user(db: Session, user: schemas.UserBase):
 def get_user(db: Session, uid: str):
     return db.query(models.User).filter(models.User.uid == uid).first()
 
+import re
+
+def slugify(name: str) -> str:
+    # Lowercase, replace spaces and non-alphanum with underscores
+    slug = re.sub(r'[^a-zA-Z0-9]+', '_', name.strip().lower())
+    slug = re.sub(r'_+', '_', slug)  # collapse multiple underscores
+    return slug.strip('_')
+
 def create_restaurant(db: Session, restaurant: schemas.RestaurantCreate):
-    db_restaurant = models.Restaurant(**restaurant.dict())
+    # Generate a unique restaurant_id (slug) from name
+    base_slug = slugify(restaurant.restaurant_name)
+    slug = base_slug
+    suffix = 1
+    while db.query(models.Restaurant).filter(models.Restaurant.restaurant_id == slug).first():
+        slug = f"{base_slug}_{suffix}"
+        suffix += 1
+    data = restaurant.dict(exclude={"restaurant_id"}, exclude_unset=True)
+    data["restaurant_id"] = slug
+    db_restaurant = models.Restaurant(**data)
     db.add(db_restaurant)
     db.commit()
     db.refresh(db_restaurant)
     return db_restaurant
 
-def update_restaurant(db: Session, restaurant_id: int, restaurant: schemas.RestaurantCreate):
+def update_restaurant(db: Session, restaurant_id: str, restaurant: schemas.RestaurantCreate):
     db_restaurant = db.query(models.Restaurant).filter(models.Restaurant.restaurant_id == restaurant_id).first()
     if not db_restaurant:
         return None
@@ -31,13 +48,15 @@ def update_restaurant(db: Session, restaurant_id: int, restaurant: schemas.Resta
 
 def generate_coupon_code(db: Session):
     import random, string
-    while True:
+    max_attempts = 1000
+    for _ in range(max_attempts):
         code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
         exists = db.query(models.ClaimedReward).filter(models.ClaimedReward.coupon_code == code).first()
         if not exists:
             return code
+    raise Exception("Unable to generate unique coupon code after 1000 attempts")
 
-def get_restaurant(db: Session, restaurant_id: int):
+def get_restaurant(db: Session, restaurant_id: str):
     return db.query(models.Restaurant).filter(models.Restaurant.restaurant_id == restaurant_id).first()
 
 def get_restaurants(db: Session, skip: int = 0, limit: int = 100):
@@ -52,7 +71,7 @@ def create_loyalty(db: Session, loyalty: schemas.LoyaltyCreate):
     db.refresh(db_loyalty)
     return db_loyalty
 
-def get_loyalty(db: Session, uid: str, restaurant_id: int):
+def get_loyalty(db: Session, uid: str, restaurant_id: str):
     return db.query(models.Loyalty).filter(models.Loyalty.uid == uid, models.Loyalty.restaurant_id == restaurant_id).first()
 
 def list_loyalties(db: Session, uid: Optional[str] = None):

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loyalty Backend Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/modern-normalize/2.0.0/modern-normalize.min.css">
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f8f9fa; margin: 0; }
+        header { background: #343a40; color: #fff; padding: 1rem 2rem; }
+        h1 { margin: 0; }
+        main { max-width: 1200px; margin: 2rem auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #0001; padding: 2rem; }
+        .section { margin-bottom: 2rem; }
+        .section h2 { border-bottom: 1px solid #ddd; padding-bottom: 0.5rem; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+        th, td { border: 1px solid #e0e0e0; padding: 0.5rem 0.75rem; text-align: left; }
+        th { background: #f1f3f4; }
+        tr:nth-child(even) { background: #fafbfc; }
+        .badge { display: inline-block; background: #007bff; color: #fff; border-radius: 4px; padding: 0.2em 0.6em; font-size: 0.9em; }
+        .claimed { background: #28a745; }
+        .not-claimed { background: #ffc107; color: #333; }
+        .redeemed { background: #17a2b8; }
+        .not-redeemed { background: #dc3545; }
+        .small { font-size: 0.85em; color: #888; }
+        .input-group { margin-bottom: 1rem; }
+        label { font-weight: bold; margin-right: 0.5rem; }
+        input { padding: 0.4rem; border: 1px solid #ccc; border-radius: 4px; }
+        button { background: #007bff; color: #fff; border: none; border-radius: 4px; padding: 0.5rem 1rem; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .error { color: #dc3545; margin-bottom: 1rem; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Loyalty Backend Dashboard</h1>
+    </header>
+    <main>
+        <div class="input-group">
+            <label for="uid">User UID:</label>
+            <input type="text" id="uid" value="" placeholder="Enter user UID to view dashboard">
+            <button onclick="loadDashboard()">Load Dashboard</button>
+        </div>
+        <div id="error" class="error"></div>
+        <div id="dashboard-sections"></div>
+    </main>
+    <script>
+    async function loadDashboard() {
+        const uid = document.getElementById('uid').value.trim();
+        if (!uid) {
+            document.getElementById('error').textContent = 'Please enter a User UID.';
+            return;
+        }
+        document.getElementById('error').textContent = '';
+        document.getElementById('dashboard-sections').innerHTML = '<p>Loading...</p>';
+        try {
+            const res = await fetch(`/api/userdashboard/?uid=${encodeURIComponent(uid)}`);
+            if (!res.ok) throw new Error('Dashboard fetch failed');
+            const data = await res.json();
+            renderDashboard(data);
+        } catch (err) {
+            document.getElementById('dashboard-sections').innerHTML = '';
+            document.getElementById('error').textContent = 'Error loading dashboard: ' + err.message;
+        }
+    }
+
+    function renderDashboard(data) {
+        let html = '';
+        html += `<div class='section'><h2>Loyalties</h2>${renderTable(data.loyalties)}</div>`;
+        html += `<div class='section'><h2>Submissions</h2>${renderTable(data.submissions)}</div>`;
+        html += `<div class='section'><h2>Claimed Rewards</h2>${renderTable(data.claimed_rewards)}</div>`;
+        html += `<div class='section'><h2>Audit Logs</h2>${renderTable(data.audit_logs)}</div>`;
+        html += `<div class='section'><h2>Dashboard Summary</h2>${renderDashboardSummary(data.dashboard)}</div>`;
+        document.getElementById('dashboard-sections').innerHTML = html;
+    }
+
+    function renderTable(rows) {
+        if (!rows || rows.length === 0) return '<div class="small">No data.</div>';
+        let cols = Object.keys(rows[0]);
+        let html = '<table><thead><tr>';
+        cols.forEach(c => html += `<th>${c}</th>`);
+        html += '</tr></thead><tbody>';
+        rows.forEach(row => {
+            html += '<tr>';
+            cols.forEach(c => {
+                let val = row[c];
+                if (typeof val === 'object' && val !== null) val = JSON.stringify(val);
+                html += `<td>${val ?? ''}</td>`;
+            });
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+        return html;
+    }
+
+    function renderDashboardSummary(dashboard) {
+        if (!dashboard || dashboard.length === 0) return '<div class="small">No dashboard summary.</div>';
+        let html = '';
+        dashboard.forEach(r => {
+            html += `<div style='margin-bottom:1.5em;'><strong>${r.restaurant_name} (${r.restaurant_id})</strong><br>`;
+            html += `<div><strong>Spin Progress:</strong> Spins: ${r.spin_progress.number_of_spins}, Points: ${r.spin_progress.current_spin_points}`;
+            html += `<br>Rewards Met: ${r.spin_progress.rewards_met.map(rw => rw.reward).join(', ') || 'None'}`;
+            html += `<br>Upcoming: ${r.spin_progress.upcoming_rewards.map(rw => rw.reward).join(', ') || 'None'}`;
+            html += `</div>`;
+            html += `<div><strong>Spend Progress:</strong> Spend: ₹${r.spend_progress.current_spend}`;
+            html += `<br>Rewards Met: ${r.spend_progress.rewards_met.map(rw => rw.reward).join(', ') || 'None'}`;
+            html += `<br>Upcoming: ${r.spend_progress.upcoming_rewards.map(rw => rw.reward).join(', ') || 'None'}`;
+            html += `</div>`;
+            html += `<div><strong>Claimed Rewards:</strong> ${r.claimed_rewards.length}`;
+            html += `<ul>`;
+            r.claimed_rewards.forEach(cr => {
+                html += `<li>${cr.reward_name} | Coupon: <span class='badge ${cr.redeemed ? "redeemed" : "not-redeemed"}'>${cr.coupon_code}</span> | Claimed: ${new Date(cr.claimed_at).toLocaleString()}</li>`;
+            });
+            html += `</ul></div>`;
+            html += `</div>`;
+        });
+        return html;
+    }
+    </script>
+</body>
+</html>

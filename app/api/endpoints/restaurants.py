@@ -25,7 +25,7 @@ def register_restaurant(
 
 @router.put("/{restaurant_id}", response_model=schemas.RestaurantOut)
 def update_restaurant(
-    restaurant_id: int,
+    restaurant_id: str,
     restaurant: schemas.RestaurantCreate = Body(...),
     db: Session = Depends(get_db),
     current_user: TokenData = Depends(get_current_user)
@@ -40,7 +40,7 @@ def update_restaurant(
     return updated_restaurant
 
 @router.get("/{restaurant_id}", response_model=schemas.RestaurantOut)
-def get_restaurant(restaurant_id: int, db: Session = Depends(get_db)):
+def get_restaurant(restaurant_id: str, db: Session = Depends(get_db)):
     db_restaurant = crud.get_restaurant(db, restaurant_id)
     if not db_restaurant:
         raise HTTPException(status_code=404, detail="Restaurant not found")

@@ -6,7 +6,7 @@ from ...database import get_db
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
 @router.get("/referral-analytics")
-def referral_analytics(restaurant_id: int = None, db: Session = Depends(get_db)):
+def referral_analytics(restaurant_id: str = None, db: Session = Depends(get_db)):
     total_referrals = 0
     coupons_issued = 0
     rewards_used = 0
@@ -26,7 +26,7 @@ def referral_analytics(restaurant_id: int = None, db: Session = Depends(get_db))
     }
 
 @router.get("/referral-leaderboard")
-def referral_leaderboard(restaurant_id: int = None, db: Session = Depends(get_db)):
+def referral_leaderboard(restaurant_id: str = None, db: Session = Depends(get_db)):
     loyalties = crud.list_loyalties(db)
     leaderboard = []
     for l in loyalties:

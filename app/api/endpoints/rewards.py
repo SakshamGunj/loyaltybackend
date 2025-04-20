@@ -13,9 +13,14 @@ def create_claimed_reward(
     db: Session = Depends(get_db),
     current_user: TokenData = Depends(get_current_user)
 ):
-    # Ignore uid and coupon_code from the body, always use current_user.uid and generate coupon_code
+    """
+    Claim a reward for the current user. The server will ALWAYS generate a unique coupon code for the reward.
+    The client should NOT send a coupon_code; any provided value will be ignored.
+    """
     reward_data = reward.dict(exclude={"uid", "coupon_code", "claimed_at", "redeemed", "redeemed_at", "id"})
+    # Coupon code is generated server-side in the CRUD layer.
     return crud.create_claimed_reward(db, reward_data, current_user.uid)
+
 
 @router.post("/validate-coupon")
 def validate_coupon(

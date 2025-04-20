@@ -29,7 +29,7 @@ def list_loyalties(
 
 @router.get("/{uid}/{restaurant_id}", response_model=schemas.LoyaltyOut)
 def get_loyalty(
-    uid: str, restaurant_id: int,
+    uid: str, restaurant_id: str,
     db: Session = Depends(get_db),
     current_user: TokenData = Depends(get_current_user)
 ):

@@ -9,7 +9,7 @@ class UserBase(BaseModel):
     created_at: Optional[datetime]
 
 class RestaurantBase(BaseModel):
-    restaurant_id: Optional[int]
+    restaurant_id: Optional[str]
     restaurant_name: str
     offers: List[str]
     points_per_rupee: float
@@ -37,7 +37,7 @@ class RestaurantOut(RestaurantBase):
 class LoyaltyBase(BaseModel):
     id: Optional[int]
     uid: str
-    restaurant_id: int
+    restaurant_id: str
     total_points: int = 0
     restaurant_points: int = 0
     tier: str = "Bronze"
@@ -59,7 +59,7 @@ class LoyaltyOut(LoyaltyBase):
 class SubmissionBase(BaseModel):
     submission_id: Optional[int]
     uid: str
-    restaurant_id: int
+    restaurant_id: str
     amount_spent: float
     points_earned: int
     submitted_at: Optional[datetime]
@@ -73,7 +73,7 @@ class SubmissionOut(SubmissionBase):
 class ClaimedRewardBase(BaseModel):
     id: Optional[int]
     uid: str
-    restaurant_id: int
+    restaurant_id: str
     reward_name: str
     threshold_id: Optional[int]
     whatsapp_number: Optional[str]
