@@ -1,7 +1,15 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 from .database import Base
 import datetime
+
+# Table to store OTP-verified phone numbers in normalized 10-digit format
+class VerifiedPhoneNumber(Base):
+    __tablename__ = "verified_phone_numbers"
+    id = Column(Integer, primary_key=True, index=True)
+    number = Column(String(10), unique=True, index=True, nullable=False)  # Always store as 10-digit string
+    verified_at = Column(DateTime, default=datetime.datetime.utcnow)
+    __table_args__ = (UniqueConstraint('number', name='uq_verified_number'),)
 
 class User(Base):
     __tablename__ = "users"

@@ -8,6 +8,11 @@ class UserBase(BaseModel):
     email: Optional[EmailStr]
     created_at: Optional[datetime]
 
+class SignupRequest(BaseModel):
+    name: str
+    email: EmailStr
+    number: str  # Phone number to be normalized and checked for duplicates
+
 class RestaurantBase(BaseModel):
     restaurant_id: Optional[str]
     restaurant_name: str
