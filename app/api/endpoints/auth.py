@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from fastapi import Depends
 import firebase_admin
 import os
-
+firebase_key = os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON")
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 # Initialize Firebase Admin SDK (only once)
@@ -15,7 +15,7 @@ if not firebase_admin._apps:
     import os
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     cred_path = os.path.join(BASE_DIR, "../../key.json")  # Navigates up to /app/key.json
-    cred = credentials.Certificate(cred_path)
+    cred = credentials.Certificate(firebase_key)
     initialize_app(cred)
 
 class SignupRequest(BaseModel):

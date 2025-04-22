@@ -3,7 +3,7 @@ from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import firebase_admin
 from firebase_admin import credentials, auth as firebase_auth
-
+firebase_key = os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON")
 security = HTTPBearer()
 
 # Path to your service account key
@@ -13,7 +13,7 @@ SERVICE_ACCOUNT_PATH = os.path.join(BASE_DIR, "key.json")
 
 # Initialize Firebase app if not already initialized
 if not firebase_admin._apps:
-    cred = credentials.Certificate(SERVICE_ACCOUNT_PATH)
+    cred = credentials.Certificate(firebase_key)
     firebase_admin.initialize_app(cred)
 
 def verify_firebase_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
