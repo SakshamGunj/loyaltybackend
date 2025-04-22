@@ -7,7 +7,9 @@ from firebase_admin import credentials, auth as firebase_auth
 security = HTTPBearer()
 
 # Path to your service account key
-SERVICE_ACCOUNT_PATH = os.getenv("FIREBASE_SERVICE_ACCOUNT", "/loyalty_backend/app/key.json")
+import os
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SERVICE_ACCOUNT_PATH = os.path.join(BASE_DIR, "key.json")
 
 # Initialize Firebase app if not already initialized
 if not firebase_admin._apps:

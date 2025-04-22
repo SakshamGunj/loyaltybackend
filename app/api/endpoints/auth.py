@@ -12,7 +12,9 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 # Initialize Firebase Admin SDK (only once)
 if not firebase_admin._apps:
-    cred_path = "/loyalty_backend/app/key.json"
+    import os
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    cred_path = os.path.join(BASE_DIR, "../../key.json")  # Navigates up to /app/key.json
     cred = credentials.Certificate(cred_path)
     initialize_app(cred)
 
