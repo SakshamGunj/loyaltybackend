@@ -7,7 +7,7 @@ from firebase_admin import credentials, auth as firebase_auth
 security = HTTPBearer()
 
 # Path to your service account key
-SERVICE_ACCOUNT_PATH = os.getenv("FIREBASE_SERVICE_ACCOUNT", "C:/Users/gunj0/CascadeProjects/loyalty_backend/app/key.json")
+SERVICE_ACCOUNT_PATH = os.getenv("FIREBASE_SERVICE_ACCOUNT", "/loyalty_backend/app/key.json")
 
 # Initialize Firebase app if not already initialized
 if not firebase_admin._apps:

@@ -1,0 +1,12 @@
+runtime: python310
+entrypoint: uvicorn app.main:app --host=0.0.0.0 --port=8080
+
+env_variables:
+  DATABASE_URL: "sqlite:///./loyalty.db"
+  FIREBASE_SERVICE_ACCOUNT: "${FIREBASE_SERVICE_ACCOUNT_JSON}"
+
+handlers:
+- url: /.*
+  script: auto
+  secure: optional  # Allow both HTTP and HTTPS (for dev/testing)
+  login: optional   # Allow public (unauthenticated) access

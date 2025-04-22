@@ -17,6 +17,44 @@ SPIN_REWARDS = [
     {"type": "offer", "value": "Free Drink"},
 ]
 
+from datetime import datetime
+from fastapi import Query
+
+@router.get("/checksspin")
+def check_spins_left(
+    uid: str = Query(...),
+    restaurant_id: str = Query(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Returns a dict {restaurant_id: spins_left} for the given user for today (max 1 spin per restaurant per day).
+    If restaurant_id is provided, only return spins left for that restaurant.
+    If no loyalty record exists, spins_left is 0.
+    """
+    today = datetime.utcnow().date()
+    if restaurant_id:
+        loyalty = db.query(crud.models.Loyalty).filter(
+            crud.models.Loyalty.uid == uid,
+            crud.models.Loyalty.restaurant_id == restaurant_id
+        ).first()
+        spins_left = 1
+        if loyalty:
+            if loyalty.last_spin_time and loyalty.last_spin_time.date() == today:
+                spins_left = 0
+        else:
+            spins_left = 0
+        return {restaurant_id: spins_left}
+    else:
+        loyalties = db.query(crud.models.Loyalty).filter(crud.models.Loyalty.uid == uid).all()
+        result = {}
+        for loyalty in loyalties:
+            rid = loyalty.restaurant_id
+            spins_today = 0
+            if loyalty.last_spin_time and loyalty.last_spin_time.date() == today:
+                spins_today = 1
+            result[rid] = 1 - spins_today
+        return result
+
 @router.post("/wheel")
 def spin_wheel(
     uid: str,

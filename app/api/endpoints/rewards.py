@@ -7,6 +7,9 @@ from typing import List
 
 router = APIRouter(prefix="/api/rewards", tags=["rewards"])
 
+import logging
+from datetime import datetime, timedelta
+
 @router.post("/", response_model=schemas.ClaimedRewardOut)
 def create_claimed_reward(
     reward: schemas.ClaimedRewardCreate,
@@ -16,10 +19,25 @@ def create_claimed_reward(
     """
     Claim a reward for the current user. The server will ALWAYS generate a unique coupon code for the reward.
     The client should NOT send a coupon_code; any provided value will be ignored.
+    Enforces a daily limit of 3 claims per user per restaurant.
     """
+    logger = logging.getLogger("rewards")
+    # Enforce daily limit
+    today = datetime.utcnow().date()
+    count = db.query(crud.models.ClaimedReward).filter(
+        crud.models.ClaimedReward.uid == current_user.uid,
+        crud.models.ClaimedReward.restaurant_id == reward.restaurant_id,
+        crud.models.ClaimedReward.claimed_at >= datetime.combine(today, datetime.min.time()),
+        crud.models.ClaimedReward.claimed_at <= datetime.combine(today, datetime.max.time())
+    ).count()
+    logger.info(f"User {current_user.uid} claims for restaurant {reward.restaurant_id} today: {count}")
+    if count >= 3:
+        logger.warning(f"User {current_user.uid} exceeded daily reward claim limit for restaurant {reward.restaurant_id}")
+        raise HTTPException(status_code=429, detail="Daily reward claim limit (3) reached for this restaurant.")
     reward_data = reward.dict(exclude={"uid", "coupon_code", "claimed_at", "redeemed", "redeemed_at", "id"})
     # Coupon code is generated server-side in the CRUD layer.
     return crud.create_claimed_reward(db, reward_data, current_user.uid)
+
 
 
 @router.post("/validate-coupon")

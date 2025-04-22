@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 # Initialize Firebase Admin SDK (only once)
 if not firebase_admin._apps:
-    cred_path = "C:/Users/gunj0/CascadeProjects/loyalty_backend/app/key.json"
+    cred_path = "/loyalty_backend/app/key.json"
     cred = credentials.Certificate(cred_path)
     initialize_app(cred)
 
