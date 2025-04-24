@@ -13,8 +13,7 @@ firebase_key = os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON")
 
 # Initialize Firebase app if not already initialized
 if not firebase_admin._apps:
-    cred = credentials.Certificate(
-)
+    cred = credentials.Certificate()
     firebase_admin.initialize_app(cred)
 
 def verify_firebase_token(credentials: HTTPAuthorizationCredentials = Depends(security)):

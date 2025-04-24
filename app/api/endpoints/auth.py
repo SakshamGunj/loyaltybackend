@@ -11,8 +11,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 # Initialize Firebase Admin SDK (only once)
 if not firebase_admin._apps:
-    cred = credentials.Certificate(
-)
+    cred = credentials.Certificate()
     initialize_app(cred)
 
 class SignupRequest(BaseModel):
