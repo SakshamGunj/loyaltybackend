@@ -16,6 +16,7 @@ class User(Base):
     uid = Column(String, primary_key=True, index=True)
     name = Column(String)
     email = Column(String, unique=True, index=True)
+    role = Column(String, default="user")  # 'user' or 'admin'
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 class Restaurant(Base):
@@ -81,3 +82,70 @@ class AuditLog(Base):
     action = Column(String)
     details = Column(JSON)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+
+# --- Online Ordering System Models ---
+
+class MenuCategory(Base):
+    __tablename__ = "menu_categories"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+    description = Column(String, nullable=True)
+    items = relationship("MenuItem", back_populates="category")
+
+class MenuItem(Base):
+    __tablename__ = "menu_items"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    price = Column(Float, nullable=False)
+    available = Column(Boolean, default=True)
+    category_id = Column(Integer, ForeignKey("menu_categories.id"))
+    category = relationship("MenuCategory", back_populates="items")
+    orders = relationship("OrderItem", back_populates="item")
+
+class Order(Base):
+    __tablename__ = "orders"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.uid"), nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    status = Column(String, default="Pending")  # Pending, Preparing, Done, Completed, Cancelled
+    total_cost = Column(Float, nullable=False)
+    payment_status = Column(String, default="Pending")  # Pending, Paid
+    promo_code_id = Column(Integer, ForeignKey("promo_codes.id"), nullable=True)
+    items = relationship("OrderItem", back_populates="order")
+    user = relationship("User")
+    payment = relationship("Payment", uselist=False, back_populates="order")
+
+class OrderItem(Base):
+    __tablename__ = "order_items"
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id"))
+    item_id = Column(Integer, ForeignKey("menu_items.id"))
+    quantity = Column(Integer, nullable=False)
+    price = Column(Float, nullable=False)  # Price at the time of order
+    order = relationship("Order", back_populates="items")
+    item = relationship("MenuItem", back_populates="orders")
+
+class Payment(Base):
+    __tablename__ = "payments"
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id"), unique=True)
+    amount = Column(Float, nullable=False)
+    status = Column(String, default="Pending")  # Pending, Paid, Failed
+    method = Column(String, nullable=True)  # e.g., 'cash', 'card', 'upi'
+    paid_at = Column(DateTime, nullable=True)
+    order = relationship("Order", back_populates="payment")
+
+class PromoCode(Base):
+    __tablename__ = "promo_codes"
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String, unique=True, nullable=False)
+    description = Column(String, nullable=True)
+    discount_percent = Column(Float, nullable=True)
+    discount_amount = Column(Float, nullable=True)
+    active = Column(Boolean, default=True)
+    valid_from = Column(DateTime, nullable=True)
+    valid_to = Column(DateTime, nullable=True)
+    usage_limit = Column(Integer, nullable=True)
+    used_count = Column(Integer, default=0)
+    orders = relationship("Order", backref="promo_code")

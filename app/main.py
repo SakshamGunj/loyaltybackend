@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.endpoints import restaurants, loyalty, submissions, rewards, audit, spin, referrals, dashboard, admin, analytics, otp, auth
+from app.api.endpoints import ordering
 from app.models import Base
 from app.database import engine
 from app.static_server import add_dashboard_static
@@ -31,6 +32,7 @@ app.include_router(admin.router)
 app.include_router(analytics.router)
 app.include_router(otp.router)
 app.include_router(auth.router)
+app.include_router(ordering.router)
 
 add_dashboard_static(app)
 

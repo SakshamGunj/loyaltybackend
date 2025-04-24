@@ -6,6 +6,7 @@ class UserBase(BaseModel):
     uid: str
     name: Optional[str]
     email: Optional[EmailStr]
+    role: Optional[str] = "user"
     created_at: Optional[datetime]
 
 class SignupRequest(BaseModel):
@@ -107,3 +108,103 @@ class AuditLogCreate(AuditLogBase):
 
 class AuditLogOut(AuditLogBase):
     pass
+
+# --- Online Ordering System Schemas ---
+
+from typing import ForwardRef
+
+class MenuCategoryBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class MenuCategoryCreate(MenuCategoryBase):
+    pass
+
+class MenuCategoryOut(MenuCategoryBase):
+    id: int
+    class Config:
+        from_attributes = True
+
+class MenuItemBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    price: float
+    available: bool = True
+    category_id: int
+
+class MenuItemCreate(MenuItemBase):
+    pass
+
+class MenuItemOut(MenuItemBase):
+    id: int
+    category: Optional[MenuCategoryOut]
+    class Config:
+        from_attributes = True
+
+class OrderItemBase(BaseModel):
+    item_id: int
+    quantity: int
+    price: float
+
+class OrderItemCreate(OrderItemBase):
+    pass
+
+class OrderItemOut(OrderItemBase):
+    id: int
+    item: Optional[MenuItemOut]
+    class Config:
+        from_attributes = True
+
+class OrderBase(BaseModel):
+    user_id: str
+    status: Optional[str] = "Pending"
+    total_cost: float
+    payment_status: Optional[str] = "Pending"
+    promo_code_id: Optional[int] = None
+
+class OrderCreate(BaseModel):
+    items: list[OrderItemCreate]
+    promo_code: Optional[str] = None
+
+class OrderOut(OrderBase):
+    id: int
+    created_at: datetime
+    items: list[OrderItemOut]
+    payment: Optional['PaymentOut']
+    class Config:
+        from_attributes = True
+
+class PaymentBase(BaseModel):
+    amount: float
+    status: Optional[str] = "Pending"
+    method: Optional[str] = None
+    paid_at: Optional[datetime] = None
+
+class PaymentCreate(PaymentBase):
+    order_id: int
+
+class PaymentOut(PaymentBase):
+    id: int
+    order_id: int
+    class Config:
+        from_attributes = True
+
+class PromoCodeBase(BaseModel):
+    code: str
+    description: Optional[str] = None
+    discount_percent: Optional[float] = None
+    discount_amount: Optional[float] = None
+    active: bool = True
+    valid_from: Optional[datetime] = None
+    valid_to: Optional[datetime] = None
+    usage_limit: Optional[int] = None
+    used_count: Optional[int] = 0
+
+class PromoCodeCreate(PromoCodeBase):
+    pass
+
+class PromoCodeOut(PromoCodeBase):
+    id: int
+    class Config:
+        from_attributes = True
+
