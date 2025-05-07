@@ -1,1 +1,32 @@
 .env
+
+# Firebase credentials
+*firebase*.json
+*serviceAccount*.json
+*adminsdk*.json
+key.json
+deploy/firebase-credentials.json
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Local database
+*.db
+*.sqlite3
+
+# Logs
+*.log
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
