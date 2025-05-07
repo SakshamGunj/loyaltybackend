@@ -12,17 +12,17 @@ router = APIRouter(prefix="/api/ordering", tags=["ordering"])
 
 # --- MENU ---
 @router.get("/menu", response_model=List[schemas.MenuItemOut])
-def list_menu(db: Session = Depends(get_db)):
-    return crud.get_all_menu_items(db)
+def list_menu(restaurant_id: str, db: Session = Depends(get_db)):
+    return crud.get_all_menu_items(db, restaurant_id)
 
 @router.get("/menu/categories", response_model=List[schemas.MenuCategoryOut])
-def list_menu_categories(db: Session = Depends(get_db)):
-    return crud.get_all_menu_categories(db)
+def list_menu_categories(restaurant_id: str, db: Session = Depends(get_db)):
+    return crud.get_all_menu_categories(db, restaurant_id)
 
 # --- MENU CATEGORY CRUD (Admin) ---
 @router.post("/menu/categories", response_model=schemas.MenuCategoryOut)
-def create_menu_category(category: schemas.MenuCategoryCreate, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
-    return crud.create_menu_category(db, category)
+def create_menu_category(restaurant_id: str, category: schemas.MenuCategoryCreate, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
+    return crud.create_menu_category(db, restaurant_id, category)
 
 @router.put("/menu/categories/{category_id}", response_model=schemas.MenuCategoryOut)
 def update_menu_category(category_id: int, category: schemas.MenuCategoryCreate, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
@@ -40,8 +40,8 @@ def delete_menu_category(category_id: int, db: Session = Depends(get_db), curren
 
 # --- MENU ITEM CRUD (Admin) ---
 @router.post("/menu/items", response_model=schemas.MenuItemOut)
-def create_menu_item(item: schemas.MenuItemCreate, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
-    return crud.create_menu_item(db, item)
+def create_menu_item(restaurant_id: str, item: schemas.MenuItemCreate, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
+    return crud.create_menu_item(db, restaurant_id, item)
 
 @router.put("/menu/items/{item_id}", response_model=schemas.MenuItemOut)
 def update_menu_item(item_id: int, item: schemas.MenuItemCreate, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
@@ -126,8 +126,20 @@ async def orders_by_user(user_id: str, db: Session = Depends(get_db), current_us
     return crud.get_orders_by_user(db, user_id)
 
 @router.get("/orders", response_model=List[schemas.OrderOut])
-def admin_list_orders(db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
-    return crud.get_all_orders(db)
+def admin_list_orders(
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(get_current_user),
+    restaurant_id: Optional[str] = None
+):
+    """
+    Get all orders. Admins can filter by restaurant_id.
+    
+    Parameters:
+    - restaurant_id: Optional filter to show orders for a specific restaurant
+    """
+ 
+    
+    return crud.get_all_orders(db, restaurant_id)
 
 @router.get("/orders/filter", response_model=List[schemas.OrderOut])
 def filter_orders(

@@ -88,6 +88,7 @@ class AuditLog(Base):
 class MenuCategory(Base):
     __tablename__ = "menu_categories"
     id = Column(Integer, primary_key=True, index=True)
+    restaurant_id = Column(String, ForeignKey("restaurants.restaurant_id"), nullable=False, index=True)
     name = Column(String, unique=True, nullable=False)
     description = Column(String, nullable=True)
     items = relationship("MenuItem", back_populates="category")
@@ -95,6 +96,7 @@ class MenuCategory(Base):
 class MenuItem(Base):
     __tablename__ = "menu_items"
     id = Column(Integer, primary_key=True, index=True)
+    restaurant_id = Column(String, ForeignKey("restaurants.restaurant_id"), index=True)
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
     price = Column(Float, nullable=False)
@@ -108,13 +110,24 @@ class Order(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String, ForeignKey("users.uid"), nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    status = Column(String, default="Pending")  # Pending, Preparing, Done, Completed, Cancelled
+    status = Column(String, default="Order Placed")  # Order Placed -> Order Confirmed -> Payment Done
     total_cost = Column(Float, nullable=False)
-    payment_status = Column(String, default="Pending")  # Pending, Paid
+    payment_status = Column(String, default="Pending")
     promo_code_id = Column(Integer, ForeignKey("promo_codes.id"), nullable=True)
     items = relationship("OrderItem", back_populates="order")
     user = relationship("User")
     payment = relationship("Payment", uselist=False, back_populates="order")
+    status_history = relationship("OrderStatusHistory", back_populates="order", order_by="desc(OrderStatusHistory.changed_at)")
+
+class OrderStatusHistory(Base):
+    __tablename__ = "order_status_history"
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
+    status = Column(String, nullable=False)
+    changed_at = Column(DateTime, default=datetime.datetime.utcnow)
+    changed_by = Column(String, nullable=False)  # UID of the user who changed the status
+    
+    order = relationship("Order", back_populates="status_history")
 
 class OrderItem(Base):
     __tablename__ = "order_items"

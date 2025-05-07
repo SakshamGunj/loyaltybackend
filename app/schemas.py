@@ -126,6 +126,7 @@ class MenuCategoryOut(MenuCategoryBase):
         from_attributes = True
 
 class MenuItemBase(BaseModel):
+    restaurant_id: str
     name: str
     description: Optional[str] = None
     price: float
@@ -144,10 +145,11 @@ class MenuItemOut(MenuItemBase):
 class OrderItemBase(BaseModel):
     item_id: int
     quantity: int
-    price: float
+    # price removed for frontend, backend will resolve price
 
-class OrderItemCreate(OrderItemBase):
-    pass
+class OrderItemCreate(BaseModel):
+    item_id: int
+    quantity: int
 
 class OrderItemOut(OrderItemBase):
     id: int
@@ -163,14 +165,30 @@ class OrderBase(BaseModel):
     promo_code_id: Optional[int] = None
 
 class OrderCreate(BaseModel):
+    restaurant_id: str
     items: list[OrderItemCreate]
     promo_code: Optional[str] = None
 
-class OrderOut(OrderBase):
+class OrderStatusHistoryOut(BaseModel):
+    status: str
+    changed_at: datetime
+    changed_by: str
+
+    class Config:
+        from_attributes = True
+
+class OrderOut(BaseModel):
     id: int
     created_at: datetime
     items: list[OrderItemOut]
     payment: Optional['PaymentOut']
+    promo_code_id: Optional[int] = None
+    restaurant_id: Optional[str] = None
+    restaurant_name: Optional[str] = None
+    status: str
+    payment_status: str
+    status_history: list[OrderStatusHistoryOut] = []
+
     class Config:
         from_attributes = True
 

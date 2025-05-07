@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from . import models, schemas
 from typing import List, Optional
 from sqlalchemy.exc import IntegrityError
@@ -143,21 +143,22 @@ def list_audit_logs(db: Session, uid: Optional[str] = None):
 # --- Online Ordering CRUD ---
 
 # --- Menu Category ---
-def get_all_menu_categories(db: Session):
-    return db.query(models.MenuCategory).all()
+def get_all_menu_categories(db: Session, restaurant_id: str):
+    return db.query(models.MenuCategory).filter(models.MenuCategory.restaurant_id == restaurant_id).all()
 
-def create_menu_category(db: Session, category: schemas.MenuCategoryCreate):
-    db_cat = models.MenuCategory(**category.dict())
-    db.add(db_cat)
+def create_menu_category(db: Session, restaurant_id: str, category: schemas.MenuCategoryCreate):
+    data = category.dict(exclude={"restaurant_id"})
+    db_category = models.MenuCategory(**data, restaurant_id=restaurant_id)
+    db.add(db_category)
     db.commit()
-    db.refresh(db_cat)
-    return db_cat
+    db.refresh(db_category)
+    return db_category
 
-def get_menu_category(db: Session, category_id: int):
-    return db.query(models.MenuCategory).filter(models.MenuCategory.id == category_id).first()
+def get_menu_category(db: Session, category_id: int, restaurant_id: str):
+    return db.query(models.MenuCategory).filter(models.MenuCategory.id == category_id, models.MenuCategory.restaurant_id == restaurant_id).first()
 
-def update_menu_category(db: Session, category_id: int, category: schemas.MenuCategoryCreate):
-    db_cat = get_menu_category(db, category_id)
+def update_menu_category(db: Session, category_id: int, restaurant_id: str, category: schemas.MenuCategoryCreate):
+    db_cat = get_menu_category(db, category_id, restaurant_id)
     if not db_cat:
         return None
     for field, value in category.dict(exclude_unset=True).items():
@@ -166,8 +167,8 @@ def update_menu_category(db: Session, category_id: int, category: schemas.MenuCa
     db.refresh(db_cat)
     return db_cat
 
-def delete_menu_category(db: Session, category_id: int):
-    db_cat = get_menu_category(db, category_id)
+def delete_menu_category(db: Session, category_id: int, restaurant_id: str):
+    db_cat = get_menu_category(db, category_id, restaurant_id)
     if db_cat:
         db.delete(db_cat)
         db.commit()
@@ -175,21 +176,23 @@ def delete_menu_category(db: Session, category_id: int):
     return False
 
 # --- Menu Item ---
-def get_all_menu_items(db: Session):
-    return db.query(models.MenuItem).all()
+def get_all_menu_items(db: Session, restaurant_id: str):
+    return db.query(models.MenuItem).filter(models.MenuItem.restaurant_id == restaurant_id).all()
 
-def create_menu_item(db: Session, item: schemas.MenuItemCreate):
-    db_item = models.MenuItem(**item.dict())
+def create_menu_item(db: Session, restaurant_id: str, item: schemas.MenuItemCreate):
+    # Create a dictionary from the item but exclude restaurant_id since it's already provided
+    item_data = item.dict(exclude={'restaurant_id'})
+    db_item = models.MenuItem(**item_data, restaurant_id=restaurant_id)
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
     return db_item
 
-def get_menu_item(db: Session, item_id: int):
-    return db.query(models.MenuItem).filter(models.MenuItem.id == item_id).first()
+def get_menu_item(db: Session, item_id: int, restaurant_id: str):
+    return db.query(models.MenuItem).filter(models.MenuItem.id == item_id, models.MenuItem.restaurant_id == restaurant_id).first()
 
-def update_menu_item(db: Session, item_id: int, item: schemas.MenuItemCreate):
-    db_item = get_menu_item(db, item_id)
+def update_menu_item(db: Session, item_id: int, restaurant_id: str, item: schemas.MenuItemCreate):
+    db_item = get_menu_item(db, item_id, restaurant_id)
     if not db_item:
         return None
     for field, value in item.dict(exclude_unset=True).items():
@@ -198,8 +201,8 @@ def update_menu_item(db: Session, item_id: int, item: schemas.MenuItemCreate):
     db.refresh(db_item)
     return db_item
 
-def delete_menu_item(db: Session, item_id: int):
-    db_item = get_menu_item(db, item_id)
+def delete_menu_item(db: Session, item_id: int, restaurant_id: str):
+    db_item = get_menu_item(db, item_id, restaurant_id)
     if db_item:
         db.delete(db_item)
         db.commit()
@@ -207,64 +210,132 @@ def delete_menu_item(db: Session, item_id: int):
     return False
 
 # --- Orders ---
-def create_order(db: Session, order: schemas.OrderCreate, user_id: str):
-    # Calculate total cost and create order + order items atomically
-    total_cost = 0
+def create_order(db: Session, order: schemas.OrderCreate, user_id: str, admin_uid: Optional[str] = None):
+    # Validate input
+    if not order.items or not isinstance(order.items, list):
+        raise Exception("Order must contain at least one item.")
+    seen_items = set()
+    restaurant_id = None
     db_items = []
+    
+    # Validate items and get restaurant_id
     for item in order.items:
-        db_menu_item = db.query(models.MenuItem).filter(models.MenuItem.id == item.item_id, models.MenuItem.available == True).first()
+        if not hasattr(item, 'item_id') or not hasattr(item, 'quantity'):
+            raise Exception("Each order item must have item_id and quantity.")
+        if item.item_id in seen_items:
+            raise Exception(f"Duplicate item in order: {item.item_id}")
+        seen_items.add(item.item_id)
+        if not isinstance(item.quantity, int) or item.quantity <= 0:
+            raise Exception(f"Invalid quantity for item {item.item_id}")
+        
+        # Get menu item and validate
+        db_menu_item = db.query(models.MenuItem).filter(
+            models.MenuItem.id == item.item_id,
+            models.MenuItem.available == True
+        ).first()
         if not db_menu_item:
             raise Exception(f"Menu item not found or unavailable: {item.item_id}")
+            
+        # Ensure all items are from the same restaurant
+        if restaurant_id is None:
+            restaurant_id = db_menu_item.restaurant_id
+        elif restaurant_id != db_menu_item.restaurant_id:
+            raise Exception("All items must be from the same restaurant")
+            
+        # Store validated items
         db_items.append((db_menu_item, item.quantity))
-        total_cost += db_menu_item.price * item.quantity
-    applied_promo = None
+
+    # Calculate total cost
+    total_cost = 0
+    for db_menu_item, quantity in db_items:
+        total_cost += db_menu_item.price * quantity
+
+    # Get promo code ID if applicable
+    promo_code_id = None
     if order.promo_code:
-        applied_promo = db.query(models.PromoCode).filter(models.PromoCode.code == order.promo_code, models.PromoCode.active == True).first()
-        if applied_promo:
-            # Check validity and usage
-            now = datetime.utcnow()
-            if applied_promo.valid_from and now < applied_promo.valid_from:
-                raise Exception("Promo code not yet valid")
-            if applied_promo.valid_to and now > applied_promo.valid_to:
-                raise Exception("Promo code expired")
-            if applied_promo.usage_limit and applied_promo.used_count >= applied_promo.usage_limit:
-                raise Exception("Promo code usage limit reached")
-            if applied_promo.discount_percent:
-                total_cost *= (1 - applied_promo.discount_percent/100)
-            elif applied_promo.discount_amount:
-                total_cost -= applied_promo.discount_amount
-            total_cost = max(0, total_cost)
-            applied_promo.used_count += 1
-            db.commit()
+        promo = db.query(models.PromoCode).filter(
+            models.PromoCode.code == order.promo_code,
+            models.PromoCode.active == True
+        ).first()
+        if promo:
+            promo_code_id = promo.id
+
+    # Create order
     db_order = models.Order(
         user_id=user_id,
         created_at=datetime.utcnow(),
         status="Pending",
         total_cost=total_cost,
         payment_status="Pending",
-        promo_code_id=applied_promo.id if applied_promo else None
+        promo_code_id=promo_code_id
     )
-    db.add(db_order)
-    db.commit()
+    if admin_uid:
+        db_order.admin_uid = admin_uid
+    
+    # Add order items before committing the order
+    order_items = []
     for db_menu_item, qty in db_items:
-        db_order_item = models.OrderItem(
-            order_id=db_order.id,
-            item_id=db_menu_item.id,
-            quantity=qty,
-            price=db_menu_item.price
+        order_items.append(
+            models.OrderItem(
+                order_id=db_order.id,
+                item_id=db_menu_item.id,
+                quantity=qty,
+                price=db_menu_item.price
+            )
         )
-        db.add(db_order_item)
-    db.commit()
-    db.refresh(db_order)
+    
+    # Add both order and order items in a single transaction
+    try:
+        db.add(db_order)
+        db.add_all(order_items)
+        db.commit()
+        db.refresh(db_order)
+        return db_order
+    except IntegrityError as e:
+        db.rollback()
+        raise Exception("Duplicate order item detected. Please try again.")
+    except Exception as e:
+        db.rollback()
+        raise Exception(f"Error creating order: {str(e)}")
+        raise Exception(f"Could not create order items: {str(e)}")
     return db_order
 
 def get_orders_by_user(db: Session, user_id: str):
     return db.query(models.Order).filter(models.Order.user_id == user_id).order_by(models.Order.created_at.desc()).all()
 
-def get_all_orders(db: Session):
-    return db.query(models.Order).order_by(models.Order.created_at.desc()).all()
+def get_all_orders(db: Session, restaurant_id: Optional[str] = None):
+    # Get all orders with their relationships including status history
+    orders = db.query(models.Order).options(
+        joinedload(models.Order.items).joinedload(models.OrderItem.item),
+        joinedload(models.Order.payment),
+        joinedload(models.Order.status_history)
+    ).order_by(models.Order.created_at.desc()).all()
+    
+    # Filter by restaurant_id if provided
+    if restaurant_id:
+        orders = [order for order in orders if order.items and order.items[0].item and order.items[0].item.restaurant_id == restaurant_id]
+    
+    # Add restaurant information to each order
+    for order in orders:
+        # Get restaurant_id from first order item
+        if order.items and order.items[0].item:
+            order.restaurant_id = order.items[0].item.restaurant_id
+            # Get restaurant name
+            restaurant = db.query(models.Restaurant).filter(
+                models.Restaurant.restaurant_id == order.restaurant_id
+            ).first()
+            if restaurant:
+                order.restaurant_name = restaurant.restaurant_name
+        
+        # Ensure promo_code_id is an integer if it exists
+        if order.promo_code_id is not None:
+            try:
+                order.promo_code_id = int(order.promo_code_id)
+            except (ValueError, TypeError):
+                order.promo_code_id = None
+    
+    return orders
 
-def get_all_orders(db: Session):
     return db.query(models.Order).order_by(models.Order.created_at.desc()).all()
 
 def filter_orders(db: Session, status=None, start_date=None, end_date=None, payment_method=None, user_id=None, order_id=None, user_email=None, user_phone=None):
@@ -289,23 +360,32 @@ def filter_orders(db: Session, status=None, start_date=None, end_date=None, paym
             q = q.filter(models.User.name.ilike(f"%{user_phone}%"))  # Change to phone if available
     return q.order_by(models.Order.created_at.desc()).all()
 
-def update_order_status(db: Session, order_id: int, status: str):
+def update_order_status(db: Session, order_id: int, status: str, changed_by: str):
     db_order = db.query(models.Order).filter(models.Order.id == order_id).first()
     if not db_order:
-        raise Exception("Order not found")
+        raise Exception(f"Order not found: {order_id}")
+    
+    # Update order status
     db_order.status = status
+    
+    # Add status history record
+    status_history = models.OrderStatusHistory(
+        order_id=order_id,
+        status=status,
+        changed_by=changed_by
+    )
+    db.add(status_history)
+    
+    # Update payment status if needed
+    if status == "Payment Done":
+        db_order.payment_status = "Paid"
+    
     db.commit()
     db.refresh(db_order)
     return db_order
 
 def confirm_order(db: Session, order_id: int):
-    db_order = db.query(models.Order).filter(models.Order.id == order_id).first()
-    if not db_order:
-        raise Exception("Order not found")
-    db_order.status = "Confirmed"
-    db.commit()
-    db.refresh(db_order)
-    return db_order
+    return update_order_status(db, order_id, "Order Confirmed")
 
 def mark_order_paid(db: Session, order_id: int):
     db_order = db.query(models.Order).filter(models.Order.id == order_id).first()
