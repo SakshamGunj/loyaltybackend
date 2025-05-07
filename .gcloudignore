@@ -1,13 +1,48 @@
+# Ignore local development files
 .git
+.github
+.gitignore
+.vscode
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+*.so
 .Python
 env/
 venv/
-.idea/
-.vscode/
-*.db
-*.sqlite3
-app/key.json
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Development database
+loyalty.db
+
+# Log files
+*.log
+
+# Testing files
+pytest_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Temporary scripts and files
+bhashsms_*.py
+bhashsms_*.log
+bhashsms_*.png
+db_*.py
+
+# Don't ignore Firebase credentials for deployment
+!deploy/firebase-credentials.json

@@ -20,7 +20,18 @@ class OTPVerify(BaseModel):
     number: str
     otp: str
 
-@router.post("/send")
+# Define response models
+class OTPResponse(BaseModel):
+    success: bool
+    message: str
+    panel_status: Optional[int] = None
+    panel_response: Optional[str] = None
+
+class OTPVerifyResponse(BaseModel):
+    success: bool
+    message: str
+
+@router.post("/send", response_model=OTPResponse)
 def send_otp(request: OTPRequest):
     """
     Accepts phone number (without +91), generates OTP, sends via BhashSMS API, stores OTP with expiry.
@@ -71,7 +82,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import VerifiedPhoneNumber
 
-@router.post("/verify")
+@router.post("/verify", response_model=OTPVerifyResponse)
 def verify_otp(request: OTPVerify, db: Session = Depends(get_db)):
     """
     Accepts phone number and OTP, checks validity and expiry (2 minutes). On success, stores the normalized 10-digit phone number in the VerifiedPhoneNumber table (if not already present).

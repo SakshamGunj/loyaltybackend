@@ -82,6 +82,7 @@ class AuditLog(Base):
     action = Column(String)
     details = Column(JSON)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    order_id = Column(Integer, ForeignKey("orders.id"), nullable=True)
 
 # --- Online Ordering System Models ---
 
@@ -91,18 +92,22 @@ class MenuCategory(Base):
     restaurant_id = Column(String, ForeignKey("restaurants.restaurant_id"), nullable=False, index=True)
     name = Column(String, unique=True, nullable=False)
     description = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
     items = relationship("MenuItem", back_populates="category")
 
 class MenuItem(Base):
     __tablename__ = "menu_items"
     id = Column(Integer, primary_key=True, index=True)
-    restaurant_id = Column(String, ForeignKey("restaurants.restaurant_id"), index=True)
+    restaurant_id = Column(String, ForeignKey("restaurants.restaurant_id"), nullable=False)
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
     price = Column(Float, nullable=False)
     available = Column(Boolean, default=True)
-    category_id = Column(Integer, ForeignKey("menu_categories.id"))
-    category = relationship("MenuCategory", back_populates="items")
+    category_id = Column(Integer, ForeignKey("menu_categories.id"), nullable=True)
+    image_url = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    
+    category = relationship("MenuCategory")
     orders = relationship("OrderItem", back_populates="item")
 
 class Order(Base):
@@ -134,31 +139,36 @@ class OrderItem(Base):
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("orders.id"))
     item_id = Column(Integer, ForeignKey("menu_items.id"))
-    quantity = Column(Integer, nullable=False)
-    price = Column(Float, nullable=False)  # Price at the time of order
+    quantity = Column(Integer, default=1)
+    price = Column(Float, nullable=False)  # Store price at time of order
+    options = Column(JSON, nullable=True)  # For customizations/options
+    
     order = relationship("Order", back_populates="items")
-    item = relationship("MenuItem", back_populates="orders")
+    item = relationship("MenuItem")
 
 class Payment(Base):
     __tablename__ = "payments"
     id = Column(Integer, primary_key=True, index=True)
-    order_id = Column(Integer, ForeignKey("orders.id"), unique=True)
+    order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
     amount = Column(Float, nullable=False)
-    status = Column(String, default="Pending")  # Pending, Paid, Failed
-    method = Column(String, nullable=True)  # e.g., 'cash', 'card', 'upi'
+    method = Column(String, nullable=False)  # "Cash", "Card", "UPI", etc.
+    status = Column(String, default="Pending")
+    processed_at = Column(DateTime, default=datetime.datetime.utcnow)
     paid_at = Column(DateTime, nullable=True)
+    transaction_id = Column(String, nullable=True)
+    
     order = relationship("Order", back_populates="payment")
 
 class PromoCode(Base):
     __tablename__ = "promo_codes"
     id = Column(Integer, primary_key=True, index=True)
-    code = Column(String, unique=True, nullable=False)
-    description = Column(String, nullable=True)
+    code = Column(String, unique=True, index=True)
     discount_percent = Column(Float, nullable=True)
     discount_amount = Column(Float, nullable=True)
-    active = Column(Boolean, default=True)
     valid_from = Column(DateTime, nullable=True)
     valid_to = Column(DateTime, nullable=True)
     usage_limit = Column(Integer, nullable=True)
     used_count = Column(Integer, default=0)
-    orders = relationship("Order", backref="promo_code")
+    restaurant_id = Column(String, ForeignKey("restaurants.restaurant_id"), nullable=True)
+    active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)

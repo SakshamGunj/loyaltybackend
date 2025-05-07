@@ -3,6 +3,10 @@ from . import models, schemas
 from typing import List, Optional
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
+from .utils.timezone import ist_now, utc_to_ist
+import logging
+
+logger = logging.getLogger(__name__)
 
 def create_user(db: Session, user: schemas.UserBase):
     db_user = models.User(**user.dict())
@@ -272,21 +276,24 @@ def create_order(db: Session, order: schemas.OrderCreate, user_id: str, admin_ui
     if admin_uid:
         db_order.admin_uid = admin_uid
     
-    # Add order items before committing the order
-    order_items = []
-    for db_menu_item, qty in db_items:
-        order_items.append(
-            models.OrderItem(
+    # Add both order and order items in a single transaction
+    try:
+        # First commit the order to get an ID
+        db.add(db_order)
+        db.commit()
+        db.refresh(db_order)
+        
+        # Now create and add order items with the order ID
+        order_items = []
+        for db_menu_item, qty in db_items:
+            order_item = models.OrderItem(
                 order_id=db_order.id,
                 item_id=db_menu_item.id,
                 quantity=qty,
                 price=db_menu_item.price
             )
-        )
-    
-    # Add both order and order items in a single transaction
-    try:
-        db.add(db_order)
+            order_items.append(order_item)
+        
         db.add_all(order_items)
         db.commit()
         db.refresh(db_order)
@@ -297,68 +304,434 @@ def create_order(db: Session, order: schemas.OrderCreate, user_id: str, admin_ui
     except Exception as e:
         db.rollback()
         raise Exception(f"Error creating order: {str(e)}")
-        raise Exception(f"Could not create order items: {str(e)}")
     return db_order
 
-def get_orders_by_user(db: Session, user_id: str):
-    return db.query(models.Order).filter(models.Order.user_id == user_id).order_by(models.Order.created_at.desc()).all()
+def get_orders_by_user(db: Session, user_id: str, restaurant_id: Optional[str] = None):
+    """Get orders for a specific user with a fault-tolerant approach."""
+    try:
+        # Get base orders for this user
+        orders = db.query(models.Order).filter(
+            models.Order.user_id == user_id
+        ).order_by(models.Order.created_at.desc()).all()
+        
+        result_orders = []
+        for order in orders:
+            # Add minimal order info to result
+            order_dict = {
+                "id": order.id,
+                "user_id": order.user_id,
+                "created_at": order.created_at,
+                "status": order.status,
+                "total_cost": order.total_cost,
+                "payment_status": order.payment_status,
+                "promo_code_id": order.promo_code_id
+            }
+            
+            # Safely try to add items
+            try:
+                order_items = db.query(models.OrderItem).filter(
+                    models.OrderItem.order_id == order.id
+                ).all()
+                
+                items = []
+                restaurant_ids = set()
+                
+                for order_item in order_items:
+                    item_dict = {
+                        "id": order_item.id,
+                        "quantity": order_item.quantity,
+                        "price": order_item.price
+                    }
+                    
+                    # Try to get menu item details
+                    try:
+                        menu_item = db.query(models.MenuItem).filter(
+                            models.MenuItem.id == order_item.item_id
+                        ).first()
+                        
+                        if menu_item:
+                            item_dict["item"] = {
+                                "id": menu_item.id,
+                                "name": menu_item.name,
+                                "price": menu_item.price,
+                                "restaurant_id": menu_item.restaurant_id
+                            }
+                            restaurant_ids.add(menu_item.restaurant_id)
+                    except Exception as e:
+                        logger.warning(f"Error getting menu item for order {order.id}: {e}")
+                        
+                    items.append(item_dict)
+                
+                # Set items on the order
+                order_dict["items"] = items
+                
+                # Filter by restaurant_id if provided
+                if restaurant_id and restaurant_id not in restaurant_ids:
+                    continue  # Skip this order if it doesn't match the requested restaurant
+                
+                # Add restaurant info if found
+                if restaurant_ids:
+                    restaurant_id_value = next(iter(restaurant_ids))
+                    order_dict["restaurant_id"] = restaurant_id_value
+                    
+                    # Try to get restaurant name
+                    try:
+                        restaurant = db.query(models.Restaurant).filter(
+                            models.Restaurant.restaurant_id == restaurant_id_value
+                        ).first()
+                        if restaurant:
+                            order_dict["restaurant_name"] = restaurant.restaurant_name
+                    except Exception as e:
+                        logger.warning(f"Error getting restaurant for order {order.id}: {e}")
+            
+            except Exception as e:
+                logger.warning(f"Error getting items for order {order.id}: {e}")
+                order_dict["items"] = []
+            
+            # Safely try to add payment info
+            try:
+                payment = db.query(models.Payment).filter(
+                    models.Payment.order_id == order.id
+                ).first()
+                
+                if payment:
+                    order_dict["payment"] = {
+                        "id": payment.id,
+                        "amount": payment.amount,
+                        "method": payment.method,
+                        "status": payment.status,
+                        "paid_at": payment.paid_at
+                    }
+            except Exception as e:
+                logger.warning(f"Error getting payment for order {order.id}: {e}")
+            
+            # Safely try to add status history
+            try:
+                status_history = db.query(models.OrderStatusHistory).filter(
+                    models.OrderStatusHistory.order_id == order.id
+                ).order_by(models.OrderStatusHistory.changed_at.desc()).all()
+                
+                if status_history:
+                    order_dict["status_history"] = [{
+                        "id": history.id,
+                        "status": history.status,
+                        "changed_at": history.changed_at,
+                        "changed_by": history.changed_by
+                    } for history in status_history]
+            except Exception as e:
+                logger.warning(f"Error getting status history for order {order.id}: {e}")
+            
+            # Add this order to results
+            result_orders.append(order_dict)
+        
+        return result_orders
+        
+    except Exception as e:
+        logger.error(f"Error in get_orders_by_user: {e}")
+        # Return empty list in case of error
+        return []
 
 def get_all_orders(db: Session, restaurant_id: Optional[str] = None):
-    # Get all orders with their relationships including status history
-    orders = db.query(models.Order).options(
-        joinedload(models.Order.items).joinedload(models.OrderItem.item),
-        joinedload(models.Order.payment),
-        joinedload(models.Order.status_history)
-    ).order_by(models.Order.created_at.desc()).all()
-    
-    # Filter by restaurant_id if provided
-    if restaurant_id:
-        orders = [order for order in orders if order.items and order.items[0].item and order.items[0].item.restaurant_id == restaurant_id]
-    
-    # Add restaurant information to each order
-    for order in orders:
-        # Get restaurant_id from first order item
-        if order.items and order.items[0].item:
-            order.restaurant_id = order.items[0].item.restaurant_id
-            # Get restaurant name
-            restaurant = db.query(models.Restaurant).filter(
-                models.Restaurant.restaurant_id == order.restaurant_id
-            ).first()
-            if restaurant:
-                order.restaurant_name = restaurant.restaurant_name
+    """Get all orders with a fault-tolerant approach that works with schema changes."""
+    try:
+        # Get orders with minimal relationships first to avoid schema issues
+        orders = db.query(models.Order).order_by(models.Order.created_at.desc()).all()
         
-        # Ensure promo_code_id is an integer if it exists
-        if order.promo_code_id is not None:
+        result_orders = []
+        for order in orders:
+            # Add minimal order info to result
+            order_dict = {
+                "id": order.id,
+                "user_id": order.user_id,
+                "created_at": order.created_at,
+                "status": order.status,
+                "total_cost": order.total_cost,
+                "payment_status": order.payment_status,
+                "promo_code_id": order.promo_code_id
+            }
+            
+            # Safely try to add items
             try:
-                order.promo_code_id = int(order.promo_code_id)
-            except (ValueError, TypeError):
-                order.promo_code_id = None
-    
-    return orders
+                order_items = db.query(models.OrderItem).filter(
+                    models.OrderItem.order_id == order.id
+                ).all()
+                
+                items = []
+                restaurant_ids = set()
+                
+                for order_item in order_items:
+                    item_dict = {
+                        "id": order_item.id,
+                        "quantity": order_item.quantity,
+                        "price": order_item.price
+                    }
+                    
+                    # Try to get menu item details
+                    try:
+                        menu_item = db.query(models.MenuItem).filter(
+                            models.MenuItem.id == order_item.item_id
+                        ).first()
+                        
+                        if menu_item:
+                            item_dict["item"] = {
+                                "id": menu_item.id,
+                                "name": menu_item.name,
+                                "price": menu_item.price,
+                                "restaurant_id": menu_item.restaurant_id
+                            }
+                            restaurant_ids.add(menu_item.restaurant_id)
+                    except Exception as e:
+                        # Log the error but continue
+                        logger.warning(f"Error getting menu item for order {order.id}: {e}")
+                        
+                    items.append(item_dict)
+                
+                # Set items on the order
+                order_dict["items"] = items
+                
+                # Filter by restaurant_id if provided
+                if restaurant_id and restaurant_id not in restaurant_ids:
+                    continue  # Skip this order if it doesn't match the requested restaurant
+                
+                # Add restaurant info if found
+                if restaurant_ids:
+                    restaurant_id_value = next(iter(restaurant_ids))
+                    order_dict["restaurant_id"] = restaurant_id_value
+                    
+                    # Try to get restaurant name
+                    try:
+                        restaurant = db.query(models.Restaurant).filter(
+                            models.Restaurant.restaurant_id == restaurant_id_value
+                        ).first()
+                        if restaurant:
+                            order_dict["restaurant_name"] = restaurant.restaurant_name
+                    except Exception as e:
+                        logger.warning(f"Error getting restaurant for order {order.id}: {e}")
+            
+            except Exception as e:
+                logger.warning(f"Error getting items for order {order.id}: {e}")
+                order_dict["items"] = []
+            
+            # Safely try to add payment info
+            try:
+                payment = db.query(models.Payment).filter(
+                    models.Payment.order_id == order.id
+                ).first()
+                
+                if payment:
+                    order_dict["payment"] = {
+                        "id": payment.id,
+                        "amount": payment.amount,
+                        "method": payment.method,
+                        "status": payment.status,
+                        "paid_at": payment.paid_at
+                    }
+            except Exception as e:
+                logger.warning(f"Error getting payment for order {order.id}: {e}")
+            
+            # Safely try to add status history
+            try:
+                status_history = db.query(models.OrderStatusHistory).filter(
+                    models.OrderStatusHistory.order_id == order.id
+                ).order_by(models.OrderStatusHistory.changed_at.desc()).all()
+                
+                if status_history:
+                    order_dict["status_history"] = [{
+                        "id": history.id,
+                        "status": history.status,
+                        "changed_at": history.changed_at,
+                        "changed_by": history.changed_by
+                    } for history in status_history]
+            except Exception as e:
+                logger.warning(f"Error getting status history for order {order.id}: {e}")
+            
+            # Add this order to results
+            result_orders.append(order_dict)
+        
+        return result_orders
+        
+    except Exception as e:
+        logger.error(f"Error in get_all_orders: {e}")
+        # Return empty list in case of error
+        return []
 
-    return db.query(models.Order).order_by(models.Order.created_at.desc()).all()
-
-def filter_orders(db: Session, status=None, start_date=None, end_date=None, payment_method=None, user_id=None, order_id=None, user_email=None, user_phone=None):
-    q = db.query(models.Order)
-    if status:
-        q = q.filter(models.Order.status == status)
-    if start_date:
-        q = q.filter(models.Order.created_at >= start_date)
-    if end_date:
-        q = q.filter(models.Order.created_at <= end_date)
-    if payment_method:
-        q = q.join(models.Payment).filter(models.Payment.method == payment_method)
-    if user_id:
-        q = q.filter(models.Order.user_id == user_id)
-    if order_id:
-        q = q.filter(models.Order.id == order_id)
-    if user_email or user_phone:
-        q = q.join(models.User)
-        if user_email:
-            q = q.filter(models.User.email.ilike(f"%{user_email}%"))
-        if user_phone:
-            q = q.filter(models.User.name.ilike(f"%{user_phone}%"))  # Change to phone if available
-    return q.order_by(models.Order.created_at.desc()).all()
+def filter_orders(db: Session, status=None, start_date=None, end_date=None, payment_method=None, user_id=None, order_id=None, user_email=None, user_phone=None, restaurant_id=None):
+    """Filter orders with a fault-tolerant approach."""
+    try:
+        # Start with a base query
+        query = db.query(models.Order)
+        
+        # Apply standard filters
+        if status:
+            query = query.filter(models.Order.status == status)
+        if start_date:
+            query = query.filter(models.Order.created_at >= start_date)
+        if end_date:
+            query = query.filter(models.Order.created_at <= end_date)
+        if order_id:
+            query = query.filter(models.Order.id == order_id)
+        if user_id:
+            query = query.filter(models.Order.user_id == user_id)
+        
+        # Get the filtered orders
+        orders = query.order_by(models.Order.created_at.desc()).all()
+        
+        # Post-process orders using safe queries for relationships
+        result_orders = []
+        for order in orders:
+            # Initialize with base order fields
+            order_dict = {
+                "id": order.id,
+                "user_id": order.user_id,
+                "created_at": order.created_at,
+                "status": order.status,
+                "total_cost": order.total_cost,
+                "payment_status": order.payment_status,
+                "promo_code_id": order.promo_code_id
+            }
+            
+            # Apply payment method filter safely
+            if payment_method:
+                try:
+                    payment = db.query(models.Payment).filter(
+                        models.Payment.order_id == order.id,
+                        models.Payment.method == payment_method
+                    ).first()
+                    if not payment:
+                        continue  # Skip this order if payment method doesn't match
+                except Exception as e:
+                    logger.warning(f"Error checking payment method for order {order.id}: {e}")
+                    continue  # Skip on error
+            
+            # Apply user email and phone filters safely
+            if user_email or user_phone:
+                try:
+                    user = db.query(models.User).filter(models.User.uid == order.user_id).first()
+                    if not user:
+                        continue
+                    
+                    if user_email and (not user.email or user_email.lower() not in user.email.lower()):
+                        continue
+                    
+                    # For phone number check - note this assumes phone is stored in the name field
+                    # You may need to adjust this based on your actual schema
+                    if user_phone and (not user.name or user_phone not in user.name):
+                        continue
+                except Exception as e:
+                    logger.warning(f"Error checking user filters for order {order.id}: {e}")
+                    continue
+            
+            # Safely get items and check restaurant_id
+            restaurant_match = restaurant_id is None  # If no filter, all orders match
+            try:
+                order_items = db.query(models.OrderItem).filter(
+                    models.OrderItem.order_id == order.id
+                ).all()
+                
+                items = []
+                restaurant_ids = set()
+                
+                for order_item in order_items:
+                    item_dict = {
+                        "id": order_item.id,
+                        "quantity": order_item.quantity,
+                        "price": order_item.price
+                    }
+                    
+                    # Try to get menu item details
+                    try:
+                        menu_item = db.query(models.MenuItem).filter(
+                            models.MenuItem.id == order_item.item_id
+                        ).first()
+                        
+                        if menu_item:
+                            item_dict["item"] = {
+                                "id": menu_item.id,
+                                "name": menu_item.name,
+                                "price": menu_item.price,
+                                "restaurant_id": menu_item.restaurant_id
+                            }
+                            restaurant_ids.add(menu_item.restaurant_id)
+                            
+                            # Check for restaurant_id filter match
+                            if restaurant_id and menu_item.restaurant_id == restaurant_id:
+                                restaurant_match = True
+                    except Exception as e:
+                        logger.warning(f"Error getting menu item for order {order.id}: {e}")
+                        
+                    items.append(item_dict)
+                
+                # Set items on the order
+                order_dict["items"] = items
+                
+                # Skip this order if restaurant_id filter doesn't match
+                if not restaurant_match:
+                    continue
+                
+                # Add restaurant info if found
+                if restaurant_ids:
+                    restaurant_id_value = next(iter(restaurant_ids))
+                    order_dict["restaurant_id"] = restaurant_id_value
+                    
+                    # Try to get restaurant name
+                    try:
+                        restaurant = db.query(models.Restaurant).filter(
+                            models.Restaurant.restaurant_id == restaurant_id_value
+                        ).first()
+                        if restaurant:
+                            order_dict["restaurant_name"] = restaurant.restaurant_name
+                    except Exception as e:
+                        logger.warning(f"Error getting restaurant for order {order.id}: {e}")
+            
+            except Exception as e:
+                logger.warning(f"Error getting items for order {order.id}: {e}")
+                order_dict["items"] = []
+                # Skip if restaurant filter is applied but we can't check it
+                if restaurant_id:
+                    continue
+            
+            # Safely try to add payment info
+            try:
+                payment = db.query(models.Payment).filter(
+                    models.Payment.order_id == order.id
+                ).first()
+                
+                if payment:
+                    order_dict["payment"] = {
+                        "id": payment.id,
+                        "amount": payment.amount,
+                        "method": payment.method,
+                        "status": payment.status,
+                        "paid_at": payment.paid_at
+                    }
+            except Exception as e:
+                logger.warning(f"Error getting payment for order {order.id}: {e}")
+            
+            # Safely try to add status history
+            try:
+                status_history = db.query(models.OrderStatusHistory).filter(
+                    models.OrderStatusHistory.order_id == order.id
+                ).order_by(models.OrderStatusHistory.changed_at.desc()).all()
+                
+                if status_history:
+                    order_dict["status_history"] = [{
+                        "id": history.id,
+                        "status": history.status,
+                        "changed_at": history.changed_at,
+                        "changed_by": history.changed_by
+                    } for history in status_history]
+            except Exception as e:
+                logger.warning(f"Error getting status history for order {order.id}: {e}")
+            
+            # Add this order to results
+            result_orders.append(order_dict)
+        
+        return result_orders
+        
+    except Exception as e:
+        logger.error(f"Error in filter_orders: {e}")
+        # Return empty list in case of error
+        return []
 
 def update_order_status(db: Session, order_id: int, status: str, changed_by: str):
     db_order = db.query(models.Order).filter(models.Order.id == order_id).first()
@@ -384,18 +757,26 @@ def update_order_status(db: Session, order_id: int, status: str, changed_by: str
     db.refresh(db_order)
     return db_order
 
-def confirm_order(db: Session, order_id: int):
-    return update_order_status(db, order_id, "Order Confirmed")
+def confirm_order(db: Session, order_id: int, changed_by: str):
+    return update_order_status(db, order_id, "Order Confirmed", changed_by)
 
-def mark_order_paid(db: Session, order_id: int):
+def mark_order_paid(db: Session, order_id: int, changed_by: str):
     db_order = db.query(models.Order).filter(models.Order.id == order_id).first()
     if not db_order:
         raise Exception("Order not found")
     db_order.payment_status = "Paid"
+    
+    # Add status history record
+    status_history = models.OrderStatusHistory(
+        order_id=order_id,
+        status="Payment Done",
+        changed_by=changed_by
+    )
+    db.add(status_history)
+    
     # Also update Payment record if present
     if db_order.payment:
         db_order.payment.status = "Paid"
-        from datetime import datetime
         db_order.payment.paid_at = datetime.utcnow()
     db.commit()
     db.refresh(db_order)
@@ -428,7 +809,6 @@ def refund_order(db: Session, order_id: int, refunded_by: str):
     db_order.payment_status = "Refunded"
     if db_order.payment:
         db_order.payment.status = "Refunded"
-        from datetime import datetime
         db_order.payment.paid_at = datetime.utcnow()
     db.commit()
     db.refresh(db_order)
@@ -453,7 +833,7 @@ def update_payment(db: Session, order_id: int, payment: schemas.PaymentCreate):
             amount=payment.amount,
             status=payment.status or "Pending",
             method=payment.method,
-            paid_at=payment.paid_at
+            paid_at=datetime.utcnow()
         )
         db.add(db_payment)
     else:
@@ -548,10 +928,19 @@ def export_orders_csv(db: Session, orders):
     from io import StringIO
     output = StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Order ID", "User ID", "Created At", "Status", "Total Cost", "Payment Status"])
+    writer.writerow(["Order ID", "User ID", "Restaurant ID", "Restaurant Name", "Created At", "Status", "Total Cost", "Payment Status"])
     for order in orders:
+        restaurant_id = getattr(order, 'restaurant_id', None) 
+        restaurant_name = getattr(order, 'restaurant_name', None)
         writer.writerow([
-            order.id, order.user_id, order.created_at, order.status, order.total_cost, order.payment_status
+            order.id, 
+            order.user_id, 
+            restaurant_id,
+            restaurant_name,
+            order.created_at, 
+            order.status, 
+            order.total_cost, 
+            order.payment_status
         ])
     return output.getvalue()
 

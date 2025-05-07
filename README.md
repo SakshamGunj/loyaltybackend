@@ -410,3 +410,115 @@ All endpoints (except OTP) require a valid JWT in the `Authorization` header: `B
 ---
 
 For any questions or to see an example payload/response for a specific endpoint, please refer to the backend code or ask the backend team.
+
+# BhashSMS Web Automation
+
+This script automates the login process for the BhashSMS portal and captures dashboard content.
+
+## Features
+
+- Automated login to BhashSMS portal
+- Dashboard content capture
+- Screenshot functionality
+- Detailed logging
+- REST API integration for headless operation
+
+## Prerequisites
+
+- Python 3.6+
+- Chrome browser installed
+- ChromeDriver (will be automatically managed)
+
+## Installation
+
+1. Clone or download this repository
+2. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+## Usage
+
+### Standalone Mode
+
+Run the script directly for a one-time automation:
+
+```bash
+python bhashsms_automation.py
+```
+
+By default, the script:
+1. Opens Chrome browser in headless mode
+2. Navigates to BhashSMS login page
+3. Logs in with the credentials defined in the script
+4. Captures the dashboard content
+5. Takes a screenshot
+6. Saves logs to bhashsms_automation.log
+
+### API Mode
+
+Run the script as an API server:
+
+```bash
+python bhashsms_automation.py --api
+```
+
+This starts a FastAPI server on port 8000 with the following endpoints:
+
+- `GET /` - Check if the API is running
+- `POST /api/bhashsms/login` - Trigger a login operation (runs in background)
+- `GET /api/bhashsms/status` - Check the status of the latest run
+- `GET /api/bhashsms/screenshot` - Get the latest screenshot
+
+#### API Usage Example
+
+```bash
+# Trigger a login operation
+curl -X POST http://localhost:8000/api/bhashsms/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "TENVERSE_MEDIA", "password": "123456"}'
+
+# Check status
+curl http://localhost:8000/api/bhashsms/status
+
+# Get screenshot (download)
+curl http://localhost:8000/api/bhashsms/screenshot --output screenshot.png
+```
+
+## Configuration
+
+To modify the behavior, edit the `bhashsms_automation.py` file:
+
+- Change credentials in the `main()` function for standalone mode
+- Set `headless=False` in `BhashSMSAutomation()` if you want to see the browser (standalone mode only)
+- Modify XPaths if the website structure changes
+
+## Output
+
+The script generates:
+- Console output showing login status and dashboard content preview
+- Log file (`bhashsms_automation.log`) with detailed execution information
+- Screenshots with timestamps (`bhashsms_dashboard_YYYYMMDD_HHMMSS.png`)
+- Result JSON files with extracted data (`bhashsms_result_YYYYMMDD_HHMMSS.json`)
+
+## Integration with Other Systems
+
+The API mode allows you to integrate this automation with other systems:
+
+- Call the API endpoints from your own application
+- Schedule regular runs using cron or similar tools
+- Build a frontend to display results
+
+## Troubleshooting
+
+If you encounter issues:
+1. Check that Chrome is installed and up to date
+2. Verify your internet connection
+3. Make sure the provided credentials are correct
+4. Review the log file for error messages
+5. For API mode, check the returned status messages
+
+## Note
+
+This script is for educational purposes. Use responsibly and in accordance with BhashSMS terms of service.

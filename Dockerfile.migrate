@@ -1,0 +1,24 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Copy requirements and application code
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+# Build arguments for database configuration
+ARG DB_USER
+ARG DB_PASS
+ARG DB_NAME
+ARG CLOUD_SQL_CONNECTION_NAME
+
+# Set environment variables for database connection
+ENV DB_USER=$DB_USER
+ENV DB_PASS=$DB_PASS
+ENV DB_NAME=$DB_NAME
+ENV CLOUD_SQL_CONNECTION_NAME=$CLOUD_SQL_CONNECTION_NAME
+
+# Run migrations
+CMD alembic upgrade head 

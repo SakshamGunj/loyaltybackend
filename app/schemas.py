@@ -88,7 +88,6 @@ class ClaimedRewardBase(BaseModel):
     redeemed: bool = False
     redeemed_at: Optional[datetime]
     coupon_code: Optional[str] = None  # New field
-    coupon_code: Optional[str] = None  # New field
 
 class ClaimedRewardCreate(ClaimedRewardBase):
     pass

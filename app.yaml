@@ -1,12 +1,32 @@
-runtime: python310
-entrypoint: uvicorn app.main:app --host=0.0.0.0 --port=8080
+runtime: python311
+entrypoint: uvicorn app.main:app --host=0.0.0.0 --port=${PORT}
+
+instance_class: F2
 
 env_variables:
+  # Database configuration (set these in Google Cloud console)
+  # DB_USER: "your-db-user"
+  # DB_PASS: "your-db-password"
+  # DB_NAME: "loyalty"
+  # CLOUD_SQL_CONNECTION_NAME: "your-project:your-region:your-instance"
+  
+  # Use /tmp for SQLite if using local file-based DB
   DATABASE_URL: "sqlite:////tmp/loyalty.db"
-  FIREBASE_SERVICE_ACCOUNT: "${FIREBASE_SERVICE_ACCOUNT_JSON}"
+  
+  # Firebase configuration
+  FIREBASE_API_KEY: "AIzaSyALZiqfQXlCGqRCI_NN3127oZhIkFd6unk"
+  # FIREBASE_SERVICE_ACCOUNT: "json-credentials-string"
+  # FIREBASE_CREDENTIALS_PATH: "/path/to/credentials.json"
 
 handlers:
 - url: /.*
   script: auto
-  secure: optional  # Allow both HTTP and HTTPS (for dev/testing)
-  login: optional   # Allow public (unauthenticated) access
+  secure: always
+  
+automatic_scaling:
+  min_instances: 1
+  max_instances: 5
+  min_idle_instances: 1
+  max_idle_instances: 2
+  min_pending_latency: automatic
+  max_pending_latency: automatic

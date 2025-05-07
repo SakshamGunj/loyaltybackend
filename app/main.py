@@ -6,6 +6,7 @@ from app.api.endpoints import ordering
 from app.models import Base
 from app.database import engine
 from app.static_server import add_dashboard_static
+from app.api.endpoints.timezone_middleware import TimezoneMiddleware
 
 Base.metadata.create_all(bind=engine)
 
@@ -19,6 +20,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add middleware to convert datetime values to IST in API responses
+# Disabled to fix response issues
+# app.add_middleware(TimezoneMiddleware)
 
 app.include_router(restaurants.router)
 app.include_router(loyalty.router)

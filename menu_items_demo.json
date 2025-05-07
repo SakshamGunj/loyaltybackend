@@ -1,0 +1,117 @@
+{
+  "categories": [
+    {
+      "name": "Appetizers",
+      "description": "Delicious starters to begin your meal"
+    },
+    {
+      "name": "Main Course",
+      "description": "Hearty and fulfilling main dishes"
+    },
+    {
+      "name": "Desserts",
+      "description": "Sweet treats to finish your meal"
+    },
+    {
+      "name": "Beverages",
+      "description": "Refreshing drinks to complement your food"
+    },
+    {
+      "name": "Specials",
+      "description": "Chef's special recommendations"
+    }
+  ],
+  "menu_items": [
+    {
+      "name": "Paneer Tikka",
+      "description": "Marinated cottage cheese cubes grilled to perfection",
+      "price": 250.00,
+      "available": true,
+      "category_id": 1
+    },
+    {
+      "name": "Veg Spring Rolls",
+      "description": "Crispy rolls filled with mixed vegetables",
+      "price": 180.00,
+      "available": true,
+      "category_id": 1
+    },
+    {
+      "name": "Chicken 65",
+      "description": "Spicy deep-fried chicken chunks",
+      "price": 300.00,
+      "available": true,
+      "category_id": 1
+    },
+    {
+      "name": "Butter Chicken",
+      "description": "Tender chicken cooked in rich tomato and butter gravy",
+      "price": 380.00,
+      "available": true,
+      "category_id": 2
+    },
+    {
+      "name": "Palak Paneer",
+      "description": "Cottage cheese cubes in spinach gravy",
+      "price": 320.00,
+      "available": true,
+      "category_id": 2
+    },
+    {
+      "name": "Biryani",
+      "description": "Fragrant rice dish with aromatic spices and your choice of protein",
+      "price": 420.00,
+      "available": true,
+      "category_id": 2
+    },
+    {
+      "name": "Tandoori Roti",
+      "description": "Traditional Indian bread baked in clay oven",
+      "price": 40.00,
+      "available": true,
+      "category_id": 2
+    },
+    {
+      "name": "Gulab Jamun",
+      "description": "Deep-fried milk solids soaked in sugar syrup",
+      "price": 120.00,
+      "available": true,
+      "category_id": 3
+    },
+    {
+      "name": "Chocolate Brownie",
+      "description": "Warm chocolate brownie with vanilla ice cream",
+      "price": 180.00,
+      "available": true,
+      "category_id": 3
+    },
+    {
+      "name": "Fresh Lime Soda",
+      "description": "Refreshing lime soda, sweet or salty",
+      "price": 80.00,
+      "available": true,
+      "category_id": 4
+    },
+    {
+      "name": "Mango Lassi",
+      "description": "Thick mango yogurt drink",
+      "price": 120.00,
+      "available": true,
+      "category_id": 4
+    },
+    {
+      "name": "Chef's Special Thali",
+      "description": "Assortment of chef's special dishes served in a platter",
+      "price": 550.00,
+      "available": true,
+      "category_id": 5
+    },
+    {
+      "name": "Weekend Seafood Platter",
+      "description": "Selection of fresh seafood delicacies (available on weekends only)",
+      "price": 750.00,
+      "available": false,
+      "category_id": 5
+    }
+  ]
+} 
