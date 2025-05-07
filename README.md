@@ -1,6 +1,82 @@
 # Loyalty Backend
 
-Production-grade backend for a restaurant loyalty, gamification, and referral system.
+This is a FastAPI-based loyalty backend system that includes authentication, ordering, loyalty points, referrals, and rewards.
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.11+
+- PostgreSQL (for production) or SQLite (for development)
+- Firebase project
+
+### Installation
+
+1. Clone the repository
+   ```
+   git clone https://github.com/yourusername/loyaltybackend.git
+   cd loyaltybackend
+   ```
+
+2. Install dependencies
+   ```
+   pip install -r requirements.txt
+   ```
+
+3. Set up environment variables (see Configuration section)
+
+4. Run migrations
+   ```
+   alembic upgrade head
+   ```
+
+5. Start the server
+   ```
+   uvicorn app.main:app --reload --port 8090
+   ```
+
+## Configuration
+
+Copy the `env.example` file to `.env` and update the values:
+
+```
+cp env.example .env
+```
+
+### Important: Managing Firebase Credentials Securely
+
+There are several secure ways to provide Firebase credentials to the application:
+
+1. **Environment Variable (recommended for production)**
+   - Export your Firebase service account JSON as a string in the FIREBASE_SERVICE_ACCOUNT environment variable
+   - For local development, store this in your `.env` file
+   - For deployment, use secret management services like:
+     - Google Cloud Secret Manager
+     - GitHub Secrets (for GitHub Actions)
+     - Environment variables in your hosting platform
+
+2. **Path to Credentials File**
+   - Set FIREBASE_CREDENTIALS_PATH to point to a local file
+   - Ensure this file is in `.gitignore` to prevent accidental commits
+   - For deployment, mount this file as a volume or secret
+
+3. **Default Location (not recommended for production)**
+   - Store the file at `deploy/firebase-credentials.json`
+   - Ensure this file is in `.gitignore`
+
+**NEVER commit Firebase credential files to version control!**
+
+## API Documentation
+
+For detailed API documentation, see [API_DOCUMENTATION.md](API_DOCUMENTATION.md).
+
+## Deployment
+
+For deployment instructions, see [deploy/README.md](deploy/README.md).
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Tech Stack
 - FastAPI
@@ -8,10 +84,6 @@ Production-grade backend for a restaurant loyalty, gamification, and referral sy
 - Alembic (migrations)
 - JWT Auth (Firebase simulation)
 - Modular, scalable, and ready for deployment
-
-## Setup
-1. `pip install -r requirements.txt`
-2. `uvicorn app.main:app --reload`
 
 ## Project Structure
 See `/app` for code modules.
