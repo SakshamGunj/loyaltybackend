@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from ... import schemas, crud
 from ...database import get_db
-from ...auth import get_current_user, TokenData
+from ...auth.custom_auth import get_current_user, TokenData
 from ...models import User
 from fastapi import Body
 from datetime import datetime
@@ -16,19 +16,45 @@ router = APIRouter(prefix="/api/ordering", tags=["ordering"])
 # --- MENU ---
 @router.get("/menu", response_model=List[schemas.MenuItemOut])
 def list_menu(restaurant_id: str, db: Session = Depends(get_db)):
+    """
+    Get all menu items for a specific restaurant.
+    
+    Parameters:
+    - restaurant_id: The ID of the restaurant to get menu items for
+    """
     return crud.get_all_menu_items(db, restaurant_id)
 
 @router.get("/menu/categories", response_model=List[schemas.MenuCategoryOut])
 def list_menu_categories(restaurant_id: str, db: Session = Depends(get_db)):
+    """
+    Get all menu categories for a specific restaurant.
+    
+    Parameters:
+    - restaurant_id: The ID of the restaurant to get menu categories for
+    """
     return crud.get_all_menu_categories(db, restaurant_id)
 
 # --- MENU CATEGORY CRUD (Admin) ---
 @router.post("/menu/categories", response_model=schemas.MenuCategoryOut)
 def create_menu_category(restaurant_id: str, category: schemas.MenuCategoryCreate, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
+    """
+    Create a new menu category for a specific restaurant.
+    
+    Parameters:
+    - restaurant_id: The restaurant ID to create the category for
+    - category: The category data
+    """
     return crud.create_menu_category(db, restaurant_id, category)
 
 @router.put("/menu/categories/{category_id}", response_model=schemas.MenuCategoryOut)
 def update_menu_category(category_id: int, category: schemas.MenuCategoryCreate, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
+    """
+    Update an existing menu category.
+    
+    Parameters:
+    - category_id: The ID of the category to update
+    - category: The updated category data
+    """
     updated = crud.update_menu_category(db, category_id, category)
     if not updated:
         raise HTTPException(status_code=404, detail="Category not found")
@@ -36,6 +62,12 @@ def update_menu_category(category_id: int, category: schemas.MenuCategoryCreate,
 
 @router.delete("/menu/categories/{category_id}")
 def delete_menu_category(category_id: int, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
+    """
+    Delete a menu category.
+    
+    Parameters:
+    - category_id: The ID of the category to delete
+    """
     deleted = crud.delete_menu_category(db, category_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Category not found")
@@ -44,10 +76,24 @@ def delete_menu_category(category_id: int, db: Session = Depends(get_db), curren
 # --- MENU ITEM CRUD (Admin) ---
 @router.post("/menu/items", response_model=schemas.MenuItemOut)
 def create_menu_item(restaurant_id: str, item: schemas.MenuItemCreate, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
+    """
+    Create a new menu item for a specific restaurant.
+    
+    Parameters:
+    - restaurant_id: The restaurant ID to create the item for
+    - item: The menu item data
+    """
     return crud.create_menu_item(db, restaurant_id, item)
 
 @router.put("/menu/items/{item_id}", response_model=schemas.MenuItemOut)
 def update_menu_item(item_id: int, item: schemas.MenuItemCreate, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
+    """
+    Update an existing menu item.
+    
+    Parameters:
+    - item_id: The ID of the menu item to update
+    - item: The updated menu item data
+    """
     updated = crud.update_menu_item(db, item_id, item)
     if not updated:
         raise HTTPException(status_code=404, detail="Menu item not found")
@@ -55,6 +101,12 @@ def update_menu_item(item_id: int, item: schemas.MenuItemCreate, db: Session = D
 
 @router.delete("/menu/items/{item_id}")
 def delete_menu_item(item_id: int, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
+    """
+    Delete a menu item.
+    
+    Parameters:
+    - item_id: The ID of the menu item to delete
+    """
     deleted = crud.delete_menu_item(db, item_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Menu item not found")

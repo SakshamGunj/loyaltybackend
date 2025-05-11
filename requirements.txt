@@ -12,7 +12,8 @@ cryptography==40.0.1
 pytz==2023.3
 psycopg2-binary==2.9.6  # For PostgreSQL support
 PyJWT
-passlib[bcrypt]
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
 loguru
 httpx
 pytest

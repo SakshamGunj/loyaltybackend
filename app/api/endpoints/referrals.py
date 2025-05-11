@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from ... import schemas, crud
 from ...database import get_db
-from ...auth import get_current_user, TokenData
+from ...auth.custom_auth import get_current_user, TokenData
 from ...utils.rate_limiter import rate_limiter_referral, rate_limiter_referral_total
 from ... import schemas, crud
 from typing import Dict

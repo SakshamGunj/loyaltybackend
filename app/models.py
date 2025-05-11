@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from .database import Base
 import datetime
 
@@ -14,10 +15,19 @@ class VerifiedPhoneNumber(Base):
 class User(Base):
     __tablename__ = "users"
     uid = Column(String, primary_key=True, index=True)
-    name = Column(String)
     email = Column(String, unique=True, index=True)
-    role = Column(String, default="user")  # 'user' or 'admin'
+    name = Column(String)
+    number = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
+    role = Column(String, default="customer")  # customer, restaurant, admin
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    is_active = Column(Boolean, default=True)
+
+    # Relationships
+    loyalties = relationship("Loyalty", back_populates="user")
+    submissions = relationship("Submission", back_populates="user")
+    claimed_rewards = relationship("ClaimedReward", back_populates="user")
+    audit_logs = relationship("AuditLog", back_populates="user")
 
 class Restaurant(Base):
     __tablename__ = "restaurants"
@@ -51,6 +61,7 @@ class Loyalty(Base):
     referral_codes = Column(JSON, default=dict)
     referrals_made = Column(JSON, default=list)
     referred_by = Column(JSON, default=dict)
+    user = relationship("User", back_populates="loyalties")
 
 class Submission(Base):
     __tablename__ = "submissions"
@@ -60,6 +71,7 @@ class Submission(Base):
     amount_spent = Column(Float)
     points_earned = Column(Integer)
     submitted_at = Column(DateTime, default=datetime.datetime.utcnow)
+    user = relationship("User", back_populates="submissions")
 
 class ClaimedReward(Base):
     __tablename__ = "claimed_rewards"
@@ -74,6 +86,7 @@ class ClaimedReward(Base):
     redeemed = Column(Boolean, default=False)
     redeemed_at = Column(DateTime, nullable=True)
     coupon_code = Column(String, unique=True, nullable=True)  # New field
+    user = relationship("User", back_populates="claimed_rewards")
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
@@ -83,6 +96,7 @@ class AuditLog(Base):
     details = Column(JSON)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=True)
+    user = relationship("User", back_populates="audit_logs")
 
 # --- Online Ordering System Models ---
 

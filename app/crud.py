@@ -4,19 +4,58 @@ from typing import List, Optional
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from .utils.timezone import ist_now, utc_to_ist
+from .auth.custom_auth import get_password_hash
 import logging
+import uuid
 
 logger = logging.getLogger(__name__)
 
-def create_user(db: Session, user: schemas.UserBase):
-    db_user = models.User(**user.dict())
+def create_user(db: Session, user: schemas.UserCreate) -> models.User:
+    uid = str(uuid.uuid4())
+    db_user = models.User(
+        uid=uid,
+        email=user.email,
+        name=user.name,
+        number=user.number,
+        hashed_password=get_password_hash(user.password),
+        role=user.role,
+        created_at=datetime.utcnow()
+    )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
     return db_user
 
-def get_user(db: Session, uid: str):
+def get_user(db: Session, uid: str) -> Optional[models.User]:
     return db.query(models.User).filter(models.User.uid == uid).first()
+
+def get_user_by_email(db: Session, email: str) -> Optional[models.User]:
+    return db.query(models.User).filter(models.User.email == email).first()
+
+def get_user_by_number(db: Session, number: str) -> Optional[models.User]:
+    return db.query(models.User).filter(models.User.number == number).first()
+
+def update_user(db: Session, uid: str, user: schemas.UserUpdate) -> Optional[models.User]:
+    db_user = get_user(db, uid)
+    if not db_user:
+        return None
+    
+    update_data = user.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(db_user, field, value)
+    
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+def delete_user(db: Session, uid: str) -> bool:
+    db_user = get_user(db, uid)
+    if not db_user:
+        return False
+    
+    db.delete(db_user)
+    db.commit()
+    return True
 
 import re
 

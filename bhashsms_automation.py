@@ -14,6 +14,8 @@ from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel
 import uvicorn
 from datetime import datetime
+import pickle  # For saving cookies
+import requests  # For making HTTP requests
 
 # Configure logging
 logging.basicConfig(
@@ -109,6 +111,8 @@ class BhashSMSAutomation:
                         EC.url_to_be("https://www.bhashsms.com/index.php")
                     )
                     logger.info("Successfully logged in and reached dashboard")
+                    # After successful login, save cookies and session
+                    self.save_cookies()
                     return True
                 except TimeoutException:
                     # Check for error messages
@@ -200,6 +204,79 @@ class BhashSMSAutomation:
             return None
         except Exception as e:
             logger.error(f"Error checking for login errors: {e}")
+            return None
+    
+    def get_cookies_dict(self):
+        """Get cookies as a dictionary for API requests."""
+        if not hasattr(self, 'driver'):
+            logger.error("No WebDriver available to get cookies")
+            return {}
+            
+        try:
+            cookies_dict = {}
+            selenium_cookies = self.driver.get_cookies()
+            
+            for cookie in selenium_cookies:
+                cookies_dict[cookie['name']] = cookie['value']
+                
+            return cookies_dict
+        except Exception as e:
+            logger.error(f"Error getting cookies as dictionary: {e}")
+            return {}
+    
+    def save_cookies(self):
+        """Save the browser's cookies and session information."""
+        try:
+            # Get cookies from the WebDriver
+            cookies = self.driver.get_cookies()
+            cookies_dict = self.get_cookies_dict()
+            
+            # Get session details
+            session_storage = self.driver.execute_script("return window.sessionStorage;")
+            local_storage = self.driver.execute_script("return window.localStorage;")
+            
+            # Extract current URL and headers
+            current_url = self.driver.current_url
+            
+            # Create a session info dictionary
+            session_info = {
+                "cookies": cookies,
+                "cookies_dict": cookies_dict,
+                "session_storage": session_storage,
+                "local_storage": local_storage,
+                "current_url": current_url,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            # Save to file
+            filename = "bhashsms_session.json"
+            with open(filename, "w") as f:
+                json.dump(session_info, f, indent=2, default=str)
+                
+            # Save cookies in pickle format (can be loaded directly into requests)
+            pickle_filename = "bhashsms_cookies.pkl"
+            with open(pickle_filename, "wb") as f:
+                pickle.dump(cookies, f)
+                
+            logger.info(f"Saved session information to {filename} and {pickle_filename}")
+            
+            # Print cookies and session to console
+            print("\n" + "="*50)
+            print("COOKIES AND SESSION INFORMATION")
+            print("="*50)
+            print("\nCookies (dictionary format for API requests):")
+            print("-"*50)
+            for cookie_name, cookie_value in cookies_dict.items():
+                print(f"{cookie_name}: {cookie_value}")
+            
+            print("\nFull Session Information saved to:")
+            print(f"- {filename} (JSON format)")
+            print(f"- {pickle_filename} (Pickle format for direct loading)")
+            print("="*50 + "\n")
+            
+            return cookies_dict
+        except Exception as e:
+            logger.error(f"Error saving cookies and session information: {e}")
             return None
             
     def capture_dashboard_content(self):
@@ -360,6 +437,154 @@ class BhashSMSAutomation:
             logger.info("Closing browser")
             self.driver.quit()
 
+    def send_whatsapp_message(self, phone_number, template_code="7854", template_message="{{1}} Your Auth Otp", dtype="authh", stype="text", tai="1", cano="1"):
+        """
+        Send a WhatsApp message using captured cookies.
+        
+        Args:
+            phone_number (str): Phone number to send WhatsApp to (without country code)
+            template_code (str): Template code to use
+            template_message (str): Template message with variables
+            dtype (str): Message type
+            stype (str): Sending type
+            tai (str): Template attribute ID
+            cano (str): Campaign number
+            
+        Returns:
+            dict: Response information
+        """
+        try:
+            if not hasattr(self, 'driver'):
+                logger.error("No active session to send WhatsApp message")
+                return {"success": False, "message": "No active session"}
+            
+            logger.info(f"Sending WhatsApp message to {phone_number}")
+            
+            # Get cookies for authentication
+            cookies = self.get_cookies_dict()
+            if not cookies:
+                logger.error("No cookies available to authenticate request")
+                return {"success": False, "message": "No cookies available"}
+            
+            # Prepare URL and headers
+            url = "https://bhashsms.com/pushwa/iframe/singlewa.php"
+            
+            headers = {
+                "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                "accept-encoding": "gzip, deflate, br, zstd",
+                "accept-language": "en-US,en;q=0.9",
+                "cache-control": "max-age=0",
+                "connection": "keep-alive",
+                "origin": "https://bhashsms.com",
+                "referer": "https://bhashsms.com/pushwa/iframe/singlewa.php",
+                "sec-ch-ua": "\"Google Chrome\";v=\"135\", \"Not-A.Brand\";v=\"8\", \"Chromium\";v=\"135\"",
+                "sec-ch-ua-mobile": "?0",
+                "sec-ch-ua-platform": "\"Windows\"",
+                "sec-fetch-dest": "iframe",
+                "sec-fetch-mode": "navigate",
+                "sec-fetch-site": "same-origin",
+                "sec-fetch-user": "?1",
+                "upgrade-insecure-requests": "1",
+                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36"
+            }
+            
+            # Prepare form data
+            form_data = {
+                "parameters": template_code,
+                "numbers": phone_number,
+                "submitc": "Send Single WA",
+                "dtype": dtype,
+                "stype": stype,
+                "tmessage": template_message,
+                "tai": tai,
+                "cano": cano
+            }
+            
+            # Two approaches - using requests directly with cookies or via Selenium
+            
+            # Approach 1: Using requests library with cookies
+            try:
+                logger.info(f"Sending WhatsApp message to {phone_number} using requests")
+                response = requests.post(
+                    url,
+                    data=form_data,
+                    cookies=cookies,
+                    headers=headers
+                )
+                
+                # Check for successful redirect
+                success = False
+                message = "Unknown status"
+                
+                if "msgsentsuccess.php" in response.text:
+                    success = True
+                    message = "Message sent successfully"
+                    logger.info(f"WhatsApp message sent successfully to {phone_number}")
+                else:
+                    logger.warning(f"WhatsApp message may have failed for {phone_number}: {response.text[:200]}")
+                
+                return {
+                    "success": success,
+                    "message": message,
+                    "status_code": response.status_code,
+                    "response_text": response.text[:500] + "..." if len(response.text) > 500 else response.text
+                }
+                
+            except Exception as e:
+                logger.error(f"Error sending WhatsApp message via requests: {e}")
+                
+                # Fall back to Selenium approach if requests fails
+                logger.info("Falling back to Selenium approach")
+            
+            # Approach 2: Using Selenium directly
+            # Navigate to the form page
+            self.driver.get(url)
+            time.sleep(2)
+            
+            try:
+                # Fill out the form
+                self.driver.find_element(By.NAME, "parameters").value = template_code
+                self.driver.find_element(By.NAME, "numbers").clear()
+                self.driver.find_element(By.NAME, "numbers").send_keys(phone_number)
+                self.driver.find_element(By.NAME, "dtype").value = dtype
+                self.driver.find_element(By.NAME, "stype").value = stype
+                self.driver.find_element(By.NAME, "tmessage").value = template_message
+                self.driver.find_element(By.NAME, "tai").value = tai
+                self.driver.find_element(By.NAME, "cano").value = cano
+                
+                # Submit the form
+                submit_button = self.driver.find_element(By.NAME, "submitc")
+                submit_button.click()
+                
+                # Wait for response or redirect
+                time.sleep(3)
+                
+                # Check for success
+                current_url = self.driver.current_url
+                if "msgsentsuccess.php" in current_url:
+                    logger.info(f"WhatsApp message sent successfully to {phone_number}")
+                    return {
+                        "success": True,
+                        "message": "Message sent successfully",
+                        "current_url": current_url
+                    }
+                else:
+                    logger.warning(f"WhatsApp message may have failed for {phone_number}")
+                    return {
+                        "success": False,
+                        "message": "Message may have failed",
+                        "current_url": current_url,
+                        "page_source": self.driver.page_source[:500] + "..." if len(self.driver.page_source) > 500 else self.driver.page_source
+                    }
+                    
+            except Exception as e:
+                logger.error(f"Error sending WhatsApp message via Selenium: {e}")
+                return {"success": False, "message": f"Error: {str(e)}"}
+                
+        except Exception as e:
+            logger.error(f"Error in send_whatsapp_message: {e}")
+            return {"success": False, "message": f"Error: {str(e)}"}
+
 # Pydantic models for API
 class LoginRequest(BaseModel):
     username: str
@@ -371,21 +596,39 @@ class LoginResponse(BaseModel):
     message: str
     dashboard_data: dict = None
     screenshot_url: str = None
+    cookies: dict = None
+
+class WhatsAppMessageRequest(BaseModel):
+    phone_number: str
+    template_code: str = "7854"
+    template_message: str = "{{1}} Your Auth Otp"
+    dtype: str = "authh"
+    stype: str = "text"
+    tai: str = "1"
+    cano: str = "1"
+
+class WhatsAppMessageResponse(BaseModel):
+    success: bool
+    message: str
+    details: dict = None
 
 # Global variables to track the latest automation run
 latest_screenshot = None
 latest_run_time = None
 latest_run_status = "Not run"
+latest_cookies = None
+latest_automation = None  # Keep a reference to the latest automation instance
 
 # Function to run in background
 async def run_automation(username: str, password: str, headless: bool = True):
-    global latest_screenshot, latest_run_time, latest_run_status
+    global latest_screenshot, latest_run_time, latest_run_status, latest_cookies, latest_automation
     
     latest_run_status = "In progress"
     latest_run_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     try:
         automation = BhashSMSAutomation(headless=headless)
+        latest_automation = automation  # Store the automation instance globally
         
         try:
             logger.info(f"Starting BhashSMS login automation for user {username}")
@@ -394,6 +637,9 @@ async def run_automation(username: str, password: str, headless: bool = True):
             login_success = automation.login(username, password)
             
             if login_success:
+                # Get and save cookies
+                latest_cookies = automation.get_cookies_dict()
+                
                 # Capture dashboard content after successful login
                 dashboard_data = automation.capture_dashboard_content()
                 
@@ -407,7 +653,8 @@ async def run_automation(username: str, password: str, headless: bool = True):
                         "timestamp": datetime.now().isoformat(),
                         "title": dashboard_data.get("title"),
                         "dashboard_data": dashboard_data.get("dashboard_data"),
-                        "screenshot_path": dashboard_data.get("screenshot_path")
+                        "screenshot_path": dashboard_data.get("screenshot_path"),
+                        "cookies": latest_cookies
                     }
                     
                     # Save only first 1000 chars of content to keep file size reasonable
@@ -434,8 +681,9 @@ async def run_automation(username: str, password: str, headless: bool = True):
             logger.error(f"Automation error: {e}")
             raise
         finally:
-            # Always close the browser
-            automation.close()
+            # Don't close the browser here - we want to keep it active for further requests
+            # We'll close it when the application shuts down
+            pass
     except Exception as e:
         latest_run_status = f"Critical error: {str(e)}"
         logger.error(f"Critical automation error: {e}")
@@ -471,8 +719,17 @@ async def bhashsms_status():
     return JSONResponse({
         "status": latest_run_status,
         "last_run": latest_run_time,
-        "screenshot_available": latest_screenshot is not None
+        "screenshot_available": latest_screenshot is not None,
+        "cookies_available": latest_cookies is not None
     })
+
+@app.get("/api/bhashsms/cookies")
+async def bhashsms_cookies():
+    """Get the latest cookies."""
+    if latest_cookies:
+        return JSONResponse(latest_cookies)
+    else:
+        raise HTTPException(status_code=404, detail="No cookies available")
 
 @app.get("/api/bhashsms/screenshot")
 async def bhashsms_screenshot():
@@ -481,6 +738,40 @@ async def bhashsms_screenshot():
         return FileResponse(latest_screenshot)
     else:
         raise HTTPException(status_code=404, detail="No screenshot available")
+
+@app.post("/api/bhashsms/send-whatsapp", response_model=WhatsAppMessageResponse)
+async def send_whatsapp_message(message_data: WhatsAppMessageRequest):
+    """
+    Send a WhatsApp message using the BhashSMS platform.
+    Requires a successful login first.
+    """
+    global latest_automation, latest_cookies
+    
+    if latest_automation is None:
+        raise HTTPException(status_code=400, detail="No active session. Please login first.")
+    
+    if latest_run_status != "Success":
+        raise HTTPException(status_code=400, detail=f"Login is not successful. Current status: {latest_run_status}")
+    
+    try:
+        result = latest_automation.send_whatsapp_message(
+            phone_number=message_data.phone_number,
+            template_code=message_data.template_code,
+            template_message=message_data.template_message,
+            dtype=message_data.dtype,
+            stype=message_data.stype,
+            tai=message_data.tai,
+            cano=message_data.cano
+        )
+        
+        return {
+            "success": result.get("success", False),
+            "message": result.get("message", "Unknown result"),
+            "details": result
+        }
+    except Exception as e:
+        logger.error(f"Error sending WhatsApp message: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to send WhatsApp message: {str(e)}")
 
 @app.get("/")
 async def root():
@@ -524,6 +815,33 @@ def main():
                 print(f"Full content captured ({len(dashboard_data['content'])} chars)")
                 print(f"Screenshot saved as: {dashboard_data['screenshot_path']}")
                 print("="*50 + "\n")
+                
+                # Example: Send a WhatsApp message
+                phone_number = "7250504240"  # As requested in the prompt
+                print(f"\nSending WhatsApp message to {phone_number}...\n")
+                
+                result = automation.send_whatsapp_message(
+                    phone_number=phone_number,
+                    template_code="7854",
+                    template_message="{{1}} Your Auth Otp",
+                    dtype="authh",
+                    stype="text",
+                    tai="1",
+                    cano="1"
+                )
+                
+                print("\n" + "="*50)
+                print("WhatsApp Message Result:")
+                print("="*50)
+                print(f"Success: {result.get('success', False)}")
+                print(f"Message: {result.get('message', 'Unknown')}")
+                
+                if 'response_text' in result:
+                    print("\nResponse Preview:")
+                    print("-"*50)
+                    print(result['response_text'][:200] + "..." if len(result['response_text']) > 200 else result['response_text'])
+                    
+                print("="*50 + "\n")
             
             logger.info("Automation completed successfully")
         else:
@@ -540,7 +858,13 @@ if __name__ == "__main__":
     
     if len(sys.argv) > 1 and sys.argv[1] == "--api":
         # Run as API server
+        try:
         uvicorn.run(app, host="0.0.0.0", port=8000)
+        finally:
+            # Clean up resources when the application exits
+            if latest_automation:
+                logger.info("Closing automation resources")
+                latest_automation.close()
     else:
         # Run standalone automation
         main() 

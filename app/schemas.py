@@ -3,11 +3,38 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 class UserBase(BaseModel):
+    email: EmailStr
+    name: str
+    number: str
+    role: str = "customer"
+
+class UserCreate(UserBase):
+    password: str
+
+class UserUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    name: Optional[str] = None
+    number: Optional[str] = None
+    password: Optional[str] = None
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class UserInDB(UserBase):
     uid: str
-    name: Optional[str]
-    email: Optional[EmailStr]
-    role: Optional[str] = "user"
-    created_at: Optional[datetime]
+    hashed_password: str
+    created_at: datetime
+    is_active: bool = True
+
+    class Config:
+        orm_mode = True
+
+class UserOut(UserBase):
+    uid: str
+    created_at: datetime
+    is_active: bool
+
+    class Config:
+        orm_mode = True
 
 class SignupRequest(BaseModel):
     name: str
@@ -224,4 +251,13 @@ class PromoCodeOut(PromoCodeBase):
     id: int
     class Config:
         from_attributes = True
+
+# Token schemas
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    uid: Optional[str] = None
+    role: Optional[str] = None
 

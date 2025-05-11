@@ -17,3 +17,65 @@
 2025-05-07 01:11:42,728 - INFO - Screenshot saved as bhashsms_dashboard.png
 2025-05-07 01:11:42,734 - INFO - Automation completed successfully
 2025-05-07 01:11:42,734 - INFO - Closing browser
+2025-05-09 17:36:13,175 - INFO - Initializing BhashSMS automation
+2025-05-09 17:36:21,807 - INFO - Chrome WebDriver initialized successfully
+2025-05-09 17:36:21,808 - INFO - Starting BhashSMS login automation
+2025-05-09 17:36:21,808 - INFO - Navigating to https://www.bhashsms.com/loginlanding.php (Attempt 1/3)
+2025-05-09 17:36:28,743 - WARNING - Page title doesn't contain 'BhashSMS': BULK SMS | ONLINE SMS | PREMIUM HIGH PRIORITY BULK SMS T - Home
+2025-05-09 17:36:28,743 - INFO - Locating username field
+2025-05-09 17:36:28,763 - INFO - Locating password field
+2025-05-09 17:36:28,777 - INFO - Entering username: TENVERSE_MEDIA
+2025-05-09 17:36:29,000 - INFO - Entering password: ********
+2025-05-09 17:36:29,101 - INFO - Locating login button
+2025-05-09 17:36:29,127 - INFO - Clicking login button
+2025-05-09 17:36:38,507 - INFO - Waiting for dashboard to load
+2025-05-09 17:36:38,528 - INFO - Successfully logged in and reached dashboard
+2025-05-09 17:36:38,528 - INFO - Capturing dashboard content
+2025-05-09 17:36:38,579 - INFO - Dashboard title: BULK SMS | ONLINE SMS | PREMIUM HIGH PRIORITY BULK SMS T
+2025-05-09 17:36:38,714 - INFO - Captured 839 characters of dashboard content
+2025-05-09 17:36:39,175 - INFO - Screenshot saved as bhashsms_dashboard_20250509_173638.png
+2025-05-09 17:36:39,180 - INFO - Automation completed successfully
+2025-05-09 17:36:39,181 - INFO - Closing browser
+2025-05-09 17:42:46,847 - INFO - Initializing BhashSMS automation
+2025-05-09 17:42:48,622 - INFO - Chrome WebDriver initialized successfully
+2025-05-09 17:42:48,622 - INFO - Starting BhashSMS login automation
+2025-05-09 17:42:48,623 - INFO - Navigating to https://www.bhashsms.com/loginlanding.php (Attempt 1/3)
+2025-05-09 17:42:55,284 - WARNING - Page title doesn't contain 'BhashSMS': BULK SMS | ONLINE SMS | PREMIUM HIGH PRIORITY BULK SMS T - Home
+2025-05-09 17:42:55,286 - INFO - Locating username field
+2025-05-09 17:42:55,322 - INFO - Locating password field
+2025-05-09 17:42:55,343 - INFO - Entering username: TENVERSE_MEDIA
+2025-05-09 17:42:55,539 - INFO - Entering password: ********
+2025-05-09 17:42:55,651 - INFO - Locating login button
+2025-05-09 17:42:55,668 - INFO - Clicking login button
+2025-05-09 17:43:04,249 - INFO - Waiting for dashboard to load
+2025-05-09 17:43:04,259 - INFO - Successfully logged in and reached dashboard
+2025-05-09 17:43:04,380 - INFO - Saved session information to bhashsms_session.json and bhashsms_cookies.pkl
+2025-05-09 17:43:04,386 - INFO - Capturing dashboard content
+2025-05-09 17:43:04,425 - INFO - Dashboard title: BULK SMS | ONLINE SMS | PREMIUM HIGH PRIORITY BULK SMS T
+2025-05-09 17:43:04,494 - INFO - Captured 839 characters of dashboard content
+2025-05-09 17:43:04,866 - INFO - Screenshot saved as bhashsms_dashboard_20250509_174304.png
+2025-05-09 17:43:04,870 - INFO - Automation completed successfully
+2025-05-09 17:43:04,871 - INFO - Closing browser
+2025-05-09 17:58:44,252 - INFO - Initializing BhashSMS automation
+2025-05-09 17:58:46,695 - INFO - Chrome WebDriver initialized successfully
+2025-05-09 17:58:46,695 - INFO - Starting BhashSMS login automation
+2025-05-09 17:58:46,695 - INFO - Navigating to https://www.bhashsms.com/loginlanding.php (Attempt 1/3)
+2025-05-09 17:58:54,228 - WARNING - Page title doesn't contain 'BhashSMS': BULK SMS | ONLINE SMS | PREMIUM HIGH PRIORITY BULK SMS T - Home
+2025-05-09 17:58:54,228 - INFO - Locating username field
+2025-05-09 17:58:54,236 - INFO - Locating password field
+2025-05-09 17:58:54,296 - INFO - Entering username: TENVERSE_MEDIA
+2025-05-09 17:58:54,438 - INFO - Entering password: ********
+2025-05-09 17:58:54,525 - INFO - Locating login button
+2025-05-09 17:58:54,541 - INFO - Clicking login button
+2025-05-09 17:59:01,668 - INFO - Waiting for dashboard to load
+2025-05-09 17:59:01,679 - INFO - Successfully logged in and reached dashboard
+2025-05-09 17:59:01,778 - INFO - Saved session information to bhashsms_session.json and bhashsms_cookies.pkl
+2025-05-09 17:59:01,786 - INFO - Capturing dashboard content
+2025-05-09 17:59:01,846 - INFO - Dashboard title: BULK SMS | ONLINE SMS | PREMIUM HIGH PRIORITY BULK SMS T
+2025-05-09 17:59:01,928 - INFO - Captured 839 characters of dashboard content
+2025-05-09 17:59:02,309 - INFO - Screenshot saved as bhashsms_dashboard_20250509_175902.png
+2025-05-09 17:59:02,315 - INFO - Sending WhatsApp message to 7250504240
+2025-05-09 17:59:02,328 - INFO - Sending WhatsApp message to 7250504240 using requests
+2025-05-09 17:59:08,028 - INFO - WhatsApp message sent successfully to 7250504240
+2025-05-09 17:59:08,048 - INFO - Automation completed successfully
+2025-05-09 17:59:08,048 - INFO - Closing browser

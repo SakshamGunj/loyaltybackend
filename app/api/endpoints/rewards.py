@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from ... import schemas, crud
 from ...database import get_db
-from ...auth import get_current_user, TokenData
+from ...auth.custom_auth import get_current_user, TokenData
 from typing import List
 from pydantic import BaseModel
 from typing import Optional
@@ -86,7 +86,7 @@ def redeem_coupon(
     
     # Only admin_uid of restaurant or main admin can redeem
     restaurant = db.query(crud.models.Restaurant).filter(crud.models.Restaurant.restaurant_id == reward.restaurant_id).first()
-    main_admin_uid = "qkmgiVcJhYgTpJSITv7PD6kxgn12"
+    main_admin_uid = "03f09801-ae0f-4f1b-ad07-c3030bdd28c0"
     if current_user.uid != main_admin_uid and current_user.uid != restaurant.admin_uid:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin can redeem coupon.")
     
