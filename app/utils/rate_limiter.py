@@ -18,6 +18,7 @@ class SimpleRateLimiter:
         self.history[key].append(now)
         return True
 
-rate_limiter_spin = SimpleRateLimiter(1, 24*3600)  # 1 spin per 24h
+rate_limiter_spin = SimpleRateLimiter(3, 24*3600)  # 3 spins per 24h
 rate_limiter_referral = SimpleRateLimiter(5, 3600)  # 5 referrals per hour
 rate_limiter_referral_total = SimpleRateLimiter(10, 365*24*3600)  # 10 per year (per restaurant)
+rate_limiter_redeem_coupon = SimpleRateLimiter(1, 24*3600)  # 1 redemption per 24h (per user per restaurant)

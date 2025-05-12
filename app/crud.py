@@ -75,6 +75,7 @@ def create_restaurant(db: Session, restaurant: schemas.RestaurantCreate):
         suffix += 1
     data = restaurant.dict(exclude={"restaurant_id"}, exclude_unset=True)
     data["restaurant_id"] = slug
+    data["created_at"] = datetime.utcnow()
     db_restaurant = models.Restaurant(**data)
     db.add(db_restaurant)
     db.commit()

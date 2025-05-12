@@ -54,18 +54,23 @@ class RestaurantBase(BaseModel):
     admin_uid: Optional[str] = None
     created_at: Optional[datetime]
 
-class RestaurantCreate(RestaurantBase):
+class RestaurantCreate(BaseModel):
+    restaurant_id: Optional[str]
+    restaurant_name: str
+    offers: List[str]
+    points_per_rupee: float
     points_per_spin: float = 1.0
     reward_thresholds: List[Dict[str, Any]] = []
     spend_thresholds: List[Dict[str, Any]] = []
+    referral_rewards: Dict[str, Any]
+    owner_uid: str
     admin_uid: Optional[str] = None
 
 class RestaurantOut(RestaurantBase):
-    points_per_spin: float = 1.0
-    reward_thresholds: List[Dict[str, Any]] = []
-    spend_thresholds: List[Dict[str, Any]] = []
-    admin_uid: Optional[str] = None
-
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
 
 class LoyaltyBase(BaseModel):
     id: Optional[int]

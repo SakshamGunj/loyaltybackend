@@ -6,6 +6,7 @@ from ...auth.custom_auth import get_current_user, TokenData
 from typing import List
 from pydantic import BaseModel
 from typing import Optional
+from ...utils.rate_limiter import rate_limiter_redeem_coupon
 
 router = APIRouter(prefix="/api/rewards", tags=["rewards"])
 
@@ -76,7 +77,7 @@ def redeem_coupon(
 ):
     """
     Redeem a coupon for a customer. 
-    Enforces a limit of ONE coupon redemption per customer per day.
+    Enforces a limit of ONE coupon redemption per customer per restaurant per day.
     Only admin users can redeem coupons.
     """
     logger = logging.getLogger("rewards")
@@ -86,6 +87,9 @@ def redeem_coupon(
     
     # Only admin_uid of restaurant or main admin can redeem
     restaurant = db.query(crud.models.Restaurant).filter(crud.models.Restaurant.restaurant_id == reward.restaurant_id).first()
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+    
     main_admin_uid = "03f09801-ae0f-4f1b-ad07-c3030bdd28c0"
     if current_user.uid != main_admin_uid and current_user.uid != restaurant.admin_uid:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin can redeem coupon.")
@@ -94,25 +98,34 @@ def redeem_coupon(
     if reward.redeemed:
         raise HTTPException(status_code=400, detail="Coupon already redeemed")
     
-    # Enforce daily redemption limit (1 per day per customer)
+    # Rate limiter check - use reward.uid since that's the user who is redeeming
+    rate_limiter_key = f"redeem:{reward.uid}:{reward.restaurant_id}"
+    if not rate_limiter_redeem_coupon.is_allowed(rate_limiter_key):
+        raise HTTPException(
+            status_code=429, 
+            detail="Rate limit exceeded. Only one coupon can be redeemed per day per restaurant."
+        )
+    
+    # Enforce daily redemption limit (1 per day per customer per restaurant)
     today = datetime.utcnow().date()
     today_start = datetime.combine(today, datetime.min.time())
     today_end = datetime.combine(today, datetime.max.time())
     
-    # Count redemptions for the user who owns this coupon (reward.uid)
+    # Count redemptions for the user who owns this coupon for this specific restaurant
     redemption_count = db.query(crud.models.ClaimedReward).filter(
         crud.models.ClaimedReward.uid == reward.uid,
+        crud.models.ClaimedReward.restaurant_id == reward.restaurant_id,
         crud.models.ClaimedReward.redeemed == True,
         crud.models.ClaimedReward.redeemed_at >= today_start,
         crud.models.ClaimedReward.redeemed_at <= today_end
     ).count()
     
-    logger.info(f"User {reward.uid} redemptions today: {redemption_count}")
+    logger.info(f"User {reward.uid} redemptions for restaurant {reward.restaurant_id} today: {redemption_count}")
     if redemption_count >= 1:
-        logger.warning(f"User {reward.uid} exceeded daily redemption limit")
+        logger.warning(f"User {reward.uid} exceeded daily redemption limit for restaurant {reward.restaurant_id}")
         raise HTTPException(
             status_code=429, 
-            detail="Daily redemption limit exceeded. Only one coupon can be redeemed per day."
+            detail=f"Daily redemption limit exceeded. Only one coupon can be redeemed per day per restaurant."
         )
     
     # Mark as redeemed and set timestamp
@@ -120,6 +133,22 @@ def redeem_coupon(
     reward.redeemed_at = datetime.utcnow()
     db.commit()
     db.refresh(reward)
+    
+    # Log the redemption in audit log
+    try:
+        crud.create_audit_log(db, schemas.AuditLogCreate(
+            user_id=current_user.uid,
+            action="redeem_coupon",
+            details={
+                "coupon_code": coupon_code,
+                "reward_name": reward.reward_name,
+                "restaurant_id": reward.restaurant_id,
+                "user_id": reward.uid
+            },
+            timestamp=datetime.utcnow()
+        ))
+    except Exception as e:
+        logger.error(f"Failed to create audit log: {e}")
     
     return {"redeemed": True, "reward": reward}
 

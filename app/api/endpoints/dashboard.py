@@ -89,7 +89,11 @@ def user_dashboard(uid: str, db: Session = Depends(get_db)):
                     for th in reward_thresholds:
                         # Use get with default value to safely access dict keys
                         threshold = th.get('points', 0) if isinstance(th, dict) else 0
+                        # Check both reward and name fields for compatibility
                         reward_name = th.get('reward', '') if isinstance(th, dict) else ''
+                        if not reward_name and isinstance(th, dict):
+                            # If reward field is empty, try the name field instead
+                            reward_name = th.get('name', '')
                         
                         if not reward_name:  # Skip if reward name is empty
                             continue
@@ -114,7 +118,8 @@ def user_dashboard(uid: str, db: Session = Depends(get_db)):
                                 "coupon_code": coupon_code, 
                                 "claimed": bool(claimed)
                             })
-                        elif not upcoming_spin_rewards:
+                        else:
+                            # Add to upcoming rewards, not just the first one
                             upcoming_spin_rewards.append({"threshold": threshold, "reward": reward_name})
                 except Exception as e:
                     logger.warning(f"Error processing spin reward threshold: {e}")
@@ -128,7 +133,11 @@ def user_dashboard(uid: str, db: Session = Depends(get_db)):
                 try:
                     for th in spend_thresholds:
                         threshold = th.get('amount', 0) if isinstance(th, dict) else 0
+                        # Check both reward and name fields for compatibility
                         reward_name = th.get('reward', '') if isinstance(th, dict) else ''
+                        if not reward_name and isinstance(th, dict):
+                            # If reward field is empty, try the name field instead
+                            reward_name = th.get('name', '')
                         
                         if not reward_name:  # Skip if reward name is empty
                             continue
@@ -153,7 +162,8 @@ def user_dashboard(uid: str, db: Session = Depends(get_db)):
                                 "coupon_code": coupon_code, 
                                 "claimed": bool(claimed)
                             })
-                        elif not upcoming_spend_rewards:
+                        else:
+                            # Add to upcoming rewards, not just the first one
                             upcoming_spend_rewards.append({"threshold": threshold, "reward": reward_name})
                 except Exception as e:
                     logger.warning(f"Error processing spend threshold: {e}")
@@ -187,9 +197,13 @@ def user_dashboard(uid: str, db: Session = Depends(get_db)):
                             reward_name = getattr(cr, 'reward_name', '')
                             if reward_name:
                                 for th in reward_thresholds:
-                                    if isinstance(th, dict) and th.get('reward', '') == reward_name:
-                                        threshold = th.get('points', None)
-                                        break
+                                    if isinstance(th, dict):
+                                        # Check both reward and name fields
+                                        th_reward = th.get('reward', '')
+                                        th_name = th.get('name', '')
+                                        if th_reward == reward_name or th_name == reward_name:
+                                            threshold = th.get('points', None)
+                                            break
                             
                             reward_info = {
                                 "reward_name": reward_name,

@@ -16,7 +16,7 @@ def register_restaurant(
     current_user: TokenData = Depends(get_current_user)
 ):
     # Only main admin can create restaurants
-    main_admin_uid = "qkmgiVcJhYgTpJSITv7PD6kxgn12"
+    main_admin_uid = "03f09801-ae0f-4f1b-ad07-c3030bdd28c0"
     if current_user.uid != main_admin_uid:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only main admin can create restaurants.")
     if not restaurant.admin_uid:
