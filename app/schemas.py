@@ -196,7 +196,7 @@ class OrderBase(BaseModel):
     promo_code_id: Optional[int] = None
 
 class OrderCreate(BaseModel):
-    restaurant_id: str
+    restaurant_id: str  # Required field
     items: list[OrderItemCreate]
     promo_code: Optional[str] = None
 
@@ -209,12 +209,13 @@ class OrderStatusHistoryOut(BaseModel):
         from_attributes = True
 
 class OrderOut(BaseModel):
-    id: int
+    id: str  # Changed to string for "restaurant_id_number" format
+    order_number: int  # Added to store the numeric part separately
     created_at: datetime
     items: list[OrderItemOut]
     payment: Optional['PaymentOut']
     promo_code_id: Optional[int] = None
-    restaurant_id: Optional[str] = None
+    restaurant_id: str  # Changed to required
     restaurant_name: Optional[str] = None
     status: str
     payment_status: str
@@ -230,11 +231,11 @@ class PaymentBase(BaseModel):
     paid_at: Optional[datetime] = None
 
 class PaymentCreate(PaymentBase):
-    order_id: int
+    order_id: str  # Changed to string for "restaurant_id_number" format
 
 class PaymentOut(PaymentBase):
     id: int
-    order_id: int
+    order_id: str  # Changed to string for "restaurant_id_number" format
     class Config:
         from_attributes = True
 

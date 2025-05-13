@@ -4,7 +4,7 @@ from typing import List, Optional
 from ... import schemas, crud
 from ...database import get_db
 from ...auth.custom_auth import get_current_user, TokenData
-from ...models import User
+from ...models import User, Restaurant
 from fastapi import Body
 from datetime import datetime
 import logging
@@ -12,6 +12,19 @@ import asyncio
 import json
 
 router = APIRouter(tags=["ordering"])
+
+# Helper function to check if user is the admin of the restaurant
+async def verify_restaurant_admin(db: Session, restaurant_id: str, current_user: TokenData):
+    # Check if the restaurant exists
+    restaurant = db.query(Restaurant).filter(Restaurant.restaurant_id == restaurant_id).first()
+    if not restaurant:
+        raise HTTPException(status_code=404, detail=f"Restaurant with ID {restaurant_id} not found")
+    
+    # Check if the current user is the restaurant admin
+    if restaurant.admin_uid != current_user.uid:
+        raise HTTPException(status_code=403, detail="Only restaurant admin can perform this operation")
+    
+    return restaurant
 
 # --- MENU ---
 @router.get("/menu", response_model=List[schemas.MenuItemOut])
@@ -24,38 +37,50 @@ def list_menu_categories(restaurant_id: str, db: Session = Depends(get_db)):
 
 # --- MENU CATEGORY CRUD (Admin) ---
 @router.post("/menu/categories", response_model=schemas.MenuCategoryOut)
-def create_menu_category(restaurant_id: str, category: schemas.MenuCategoryCreate, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
+async def create_menu_category(restaurant_id: str, category: schemas.MenuCategoryCreate, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
+    # Verify admin access
+    await verify_restaurant_admin(db, restaurant_id, current_user)
     return crud.create_menu_category(db, restaurant_id, category)
 
 @router.put("/menu/categories/{category_id}", response_model=schemas.MenuCategoryOut)
-def update_menu_category(category_id: int, category: schemas.MenuCategoryCreate, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
-    updated = crud.update_menu_category(db, category_id, category)
+async def update_menu_category(category_id: int, category: schemas.MenuCategoryCreate, restaurant_id: str, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
+    # Verify admin access
+    await verify_restaurant_admin(db, restaurant_id, current_user)
+    updated = crud.update_menu_category(db, category_id, restaurant_id, category)
     if not updated:
         raise HTTPException(status_code=404, detail="Category not found")
     return updated
 
 @router.delete("/menu/categories/{category_id}")
-def delete_menu_category(category_id: int, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
-    deleted = crud.delete_menu_category(db, category_id)
+async def delete_menu_category(category_id: int, restaurant_id: str, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
+    # Verify admin access
+    await verify_restaurant_admin(db, restaurant_id, current_user)
+    deleted = crud.delete_menu_category(db, category_id, restaurant_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Category not found")
     return {"ok": True}
 
 # --- MENU ITEM CRUD (Admin) ---
 @router.post("/menu/items", response_model=schemas.MenuItemOut)
-def create_menu_item(restaurant_id: str, item: schemas.MenuItemCreate, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
+async def create_menu_item(restaurant_id: str, item: schemas.MenuItemCreate, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
+    # Verify admin access
+    await verify_restaurant_admin(db, restaurant_id, current_user)
     return crud.create_menu_item(db, restaurant_id, item)
 
 @router.put("/menu/items/{item_id}", response_model=schemas.MenuItemOut)
-def update_menu_item(item_id: int, item: schemas.MenuItemCreate, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
-    updated = crud.update_menu_item(db, item_id, item)
+async def update_menu_item(item_id: int, item: schemas.MenuItemCreate, restaurant_id: str, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
+    # Verify admin access
+    await verify_restaurant_admin(db, restaurant_id, current_user)
+    updated = crud.update_menu_item(db, item_id, restaurant_id, item)
     if not updated:
         raise HTTPException(status_code=404, detail="Menu item not found")
     return updated
 
 @router.delete("/menu/items/{item_id}")
-def delete_menu_item(item_id: int, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
-    deleted = crud.delete_menu_item(db, item_id)
+async def delete_menu_item(item_id: int, restaurant_id: str, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
+    # Verify admin access
+    await verify_restaurant_admin(db, restaurant_id, current_user)
+    deleted = crud.delete_menu_item(db, item_id, restaurant_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Menu item not found")
     return {"ok": True}
@@ -66,7 +91,7 @@ from fastapi import Security
 
 @router.post("/order/{order_id}/confirm", response_model=schemas.OrderOut)
 async def confirm_order_endpoint(
-    order_id: int, 
+    order_id: str, 
     restaurant_id: str,
     db: Session = Depends(get_db), 
     current_user: TokenData = Depends(get_current_user)
@@ -75,9 +100,12 @@ async def confirm_order_endpoint(
     Confirm an order for a specific restaurant.
     
     Parameters:
-    - order_id: The ID of the order to confirm
+    - order_id: The ID of the order to confirm, in format "restaurant_id_number"
     - restaurant_id: The restaurant ID the order belongs to
     """
+    # Verify admin access
+    await verify_restaurant_admin(db, restaurant_id, current_user)
+    
     # First, verify the order exists and belongs to the specified restaurant
     db_order = db.query(crud.models.Order).options(
         joinedload(crud.models.Order.items).joinedload(crud.models.OrderItem.item)
@@ -87,22 +115,17 @@ async def confirm_order_endpoint(
         raise HTTPException(status_code=404, detail="Order not found.")
     
     # Check if the order belongs to the specified restaurant
-    order_restaurant_id = None
-    if db_order.items and db_order.items[0].item:
-        order_restaurant_id = db_order.items[0].item.restaurant_id
-    
-    if order_restaurant_id != restaurant_id:
+    if db_order.restaurant_id != restaurant_id:
         raise HTTPException(
             status_code=403, 
             detail="This order does not belong to the specified restaurant."
         )
     
-    # Any authenticated user can confirm the order as long as it's for the right restaurant
     return crud.confirm_order(db, order_id, current_user.uid)
 
 @router.post("/order/{order_id}/mark_paid", response_model=schemas.OrderOut)
 async def mark_order_paid_endpoint(
-    order_id: int,
+    order_id: str,
     restaurant_id: str,
     db: Session = Depends(get_db), 
     current_user: TokenData = Depends(get_current_user)
@@ -111,9 +134,12 @@ async def mark_order_paid_endpoint(
     Mark an order as paid for a specific restaurant.
     
     Parameters:
-    - order_id: The ID of the order to mark as paid
+    - order_id: The ID of the order to mark as paid, in format "restaurant_id_number"
     - restaurant_id: The restaurant ID the order belongs to
     """
+    # Verify admin access
+    await verify_restaurant_admin(db, restaurant_id, current_user)
+    
     # First, verify the order exists and belongs to the specified restaurant
     db_order = db.query(crud.models.Order).options(
         joinedload(crud.models.Order.items).joinedload(crud.models.OrderItem.item)
@@ -123,17 +149,12 @@ async def mark_order_paid_endpoint(
         raise HTTPException(status_code=404, detail="Order not found.")
     
     # Check if the order belongs to the specified restaurant
-    order_restaurant_id = None
-    if db_order.items and db_order.items[0].item:
-        order_restaurant_id = db_order.items[0].item.restaurant_id
-    
-    if order_restaurant_id != restaurant_id:
+    if db_order.restaurant_id != restaurant_id:
         raise HTTPException(
             status_code=403, 
             detail="This order does not belong to the specified restaurant."
         )
     
-    # Any authenticated user can mark the order as paid as long as it's for the right restaurant
     try:
         return crud.mark_order_paid(db, order_id, current_user.uid)
     except Exception as e:
@@ -141,7 +162,7 @@ async def mark_order_paid_endpoint(
 
 @router.post("/order/{order_id}/cancel", response_model=schemas.OrderOut)
 async def cancel_order_endpoint(
-    order_id: int,
+    order_id: str,
     restaurant_id: str,
     db: Session = Depends(get_db), 
     current_user: TokenData = Depends(get_current_user)
@@ -150,9 +171,12 @@ async def cancel_order_endpoint(
     Cancel an order for a specific restaurant.
     
     Parameters:
-    - order_id: The ID of the order to cancel
+    - order_id: The ID of the order to cancel, in format "restaurant_id_number"
     - restaurant_id: The restaurant ID the order belongs to
     """
+    # Verify admin access
+    await verify_restaurant_admin(db, restaurant_id, current_user)
+    
     # First, verify the order exists and belongs to the specified restaurant
     db_order = db.query(crud.models.Order).options(
         joinedload(crud.models.Order.items).joinedload(crud.models.OrderItem.item)
@@ -162,19 +186,11 @@ async def cancel_order_endpoint(
         raise HTTPException(status_code=404, detail="Order not found.")
     
     # Check if the order belongs to the specified restaurant
-    order_restaurant_id = None
-    if db_order.items and db_order.items[0].item:
-        order_restaurant_id = db_order.items[0].item.restaurant_id
-    
-    if order_restaurant_id != restaurant_id:
+    if db_order.restaurant_id != restaurant_id:
         raise HTTPException(
             status_code=403, 
             detail="This order does not belong to the specified restaurant."
         )
-    
-    # Users can only cancel their own orders, unless they have admin role
-    if current_user.role != "admin" and db_order.user_id != current_user.uid:
-        raise HTTPException(status_code=403, detail="You can only cancel your own orders.")
     
     try:
         return crud.cancel_order(db, order_id, current_user.uid)
@@ -183,7 +199,7 @@ async def cancel_order_endpoint(
 
 @router.post("/order/{order_id}/refund", response_model=schemas.OrderOut)
 async def refund_order_endpoint(
-    order_id: int,
+    order_id: str,
     restaurant_id: str,
     db: Session = Depends(get_db), 
     current_user: TokenData = Depends(get_current_user)
@@ -192,9 +208,12 @@ async def refund_order_endpoint(
     Refund an order for a specific restaurant.
     
     Parameters:
-    - order_id: The ID of the order to refund
+    - order_id: The ID of the order to refund, in format "restaurant_id_number"
     - restaurant_id: The restaurant ID the order belongs to
     """
+    # Verify admin access
+    await verify_restaurant_admin(db, restaurant_id, current_user)
+    
     # First, verify the order exists and belongs to the specified restaurant
     db_order = db.query(crud.models.Order).options(
         joinedload(crud.models.Order.items).joinedload(crud.models.OrderItem.item)
@@ -204,19 +223,11 @@ async def refund_order_endpoint(
         raise HTTPException(status_code=404, detail="Order not found.")
     
     # Check if the order belongs to the specified restaurant
-    order_restaurant_id = None
-    if db_order.items and db_order.items[0].item:
-        order_restaurant_id = db_order.items[0].item.restaurant_id
-    
-    if order_restaurant_id != restaurant_id:
+    if db_order.restaurant_id != restaurant_id:
         raise HTTPException(
             status_code=403, 
             detail="This order does not belong to the specified restaurant."
         )
-    
-    # Only admins can refund orders
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Only admins can refund orders.")
     
     try:
         return crud.refund_order(db, order_id, current_user.uid)
@@ -225,9 +236,7 @@ async def refund_order_endpoint(
 
 @router.post("/order", response_model=schemas.OrderOut)
 async def place_order(order: schemas.OrderCreate, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
-    # Only authenticated users
-    if current_user.role != "user":
-        raise HTTPException(status_code=403, detail="Only users can place orders.")
+    # Any authenticated user can place orders
     order_obj = crud.create_order(db, order, current_user.uid)
     # Notify admins (await directly)
     try:
@@ -250,16 +259,51 @@ def user_order_history(
     """
     return crud.get_orders_by_user(db, current_user.uid, restaurant_id)
 
-@router.get("/orders/all", response_model=List[schemas.OrderOut])
-async def all_orders_history(db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Only admins can view all order history.")
-    return crud.get_all_orders(db)
+@router.get("/orders/all")
+async def all_orders_history(
+    restaurant_id: str,
+    status: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None, 
+    payment_status: Optional[str] = None,
+    user_id: Optional[str] = None,
+    db: Session = Depends(get_db), 
+    current_user: TokenData = Depends(get_current_user)
+):
+    """
+    Get all orders filtered by restaurant_id and optional parameters
+    
+    Parameters:
+    - restaurant_id: The restaurant ID to filter orders by (required)
+    - status: Filter by order status
+    - start_date: Filter by start date (ISO format)
+    - end_date: Filter by end date (ISO format)
+    - payment_status: Filter by payment status
+    - user_id: Filter by customer user ID
+    """
+    # Verify admin access
+    await verify_restaurant_admin(db, restaurant_id, current_user)
+    
+    # Parse dates if provided
+    from datetime import datetime
+    start = datetime.fromisoformat(start_date) if start_date else None
+    end = datetime.fromisoformat(end_date) if end_date else None
+    
+    # We'll reuse the filter_orders function but with restaurant_id being required
+    return crud.filter_orders(
+        db,
+        restaurant_id=restaurant_id,
+        status=status,
+        start_date=start,
+        end_date=end,
+        payment_status=payment_status,
+        user_id=user_id
+    )
 
 @router.get("/orders/user/{user_id}", response_model=List[schemas.OrderOut])
 async def orders_by_user(
     user_id: str, 
-    restaurant_id: Optional[str] = None,
+    restaurant_id: str,
     db: Session = Depends(get_db), 
     current_user: TokenData = Depends(get_current_user)
 ):
@@ -268,31 +312,33 @@ async def orders_by_user(
     
     Parameters:
     - user_id: The user ID to get orders for
-    - restaurant_id: Optional filter to show orders only for a specific restaurant
+    - restaurant_id: The restaurant ID to filter orders by
     """
-    # Admins can view any user's history; users can only view their own
-    if current_user.role != "admin" and current_user.uid != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized to view this user's orders.")
+    # Verify admin access
+    await verify_restaurant_admin(db, restaurant_id, current_user)
+    
     return crud.get_orders_by_user(db, user_id, restaurant_id)
 
 @router.get("/orders", response_model=List[schemas.OrderOut])
-def admin_list_orders(
+async def admin_list_orders(
+    restaurant_id: str,
     db: Session = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user),
-    restaurant_id: Optional[str] = None
+    current_user: TokenData = Depends(get_current_user)
 ):
     """
-    Get all orders. Admins can filter by restaurant_id.
+    Get all orders for a specific restaurant.
     
     Parameters:
-    - restaurant_id: Optional filter to show orders for a specific restaurant
+    - restaurant_id: Filter to show orders for this restaurant
     """
- 
+    # Verify admin access
+    await verify_restaurant_admin(db, restaurant_id, current_user)
     
     return crud.get_all_orders(db, restaurant_id)
 
 @router.get("/orders/filter", response_model=List[schemas.OrderOut])
-def filter_orders(
+async def filter_orders(
+    restaurant_id: str,
     status: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
@@ -301,14 +347,14 @@ def filter_orders(
     order_id: Optional[int] = None,
     user_email: Optional[str] = None,
     user_phone: Optional[str] = None,
-    restaurant_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: TokenData = Depends(get_current_user)
 ):
     """
-    Filter orders by various criteria including restaurant_id
+    Filter orders by various criteria for a specific restaurant
     
     Parameters:
+    - restaurant_id: The restaurant ID to filter orders by
     - status: Filter by order status
     - start_date: Filter by start date (ISO format)
     - end_date: Filter by end date (ISO format)
@@ -317,14 +363,15 @@ def filter_orders(
     - order_id: Filter by order ID
     - user_email: Filter by user email (partial match)
     - user_phone: Filter by user phone (partial match)
-    - restaurant_id: Filter by restaurant ID
     """
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Only admins can filter/search orders.")
+    # Verify admin access
+    await verify_restaurant_admin(db, restaurant_id, current_user)
+    
     # Parse dates if provided
     from datetime import datetime
     start = datetime.fromisoformat(start_date) if start_date else None
     end = datetime.fromisoformat(end_date) if end_date else None
+    
     return crud.filter_orders(
         db,
         status=status,
@@ -339,8 +386,8 @@ def filter_orders(
     )
 
 @router.put("/order/{order_id}/status", response_model=schemas.OrderOut)
-def update_order_status(
-    order_id: int, 
+async def update_order_status(
+    order_id: str, 
     restaurant_id: str,
     status: str = Body(...), 
     db: Session = Depends(get_db), 
@@ -350,10 +397,13 @@ def update_order_status(
     Update the status of an order for a specific restaurant.
     
     Parameters:
-    - order_id: The ID of the order to update
+    - order_id: The ID of the order to update, in format "restaurant_id_number"
     - restaurant_id: The restaurant ID the order belongs to
     - status: The new status for the order
     """
+    # Verify admin access
+    await verify_restaurant_admin(db, restaurant_id, current_user)
+    
     # First, verify the order exists and belongs to the specified restaurant
     db_order = db.query(crud.models.Order).options(
         joinedload(crud.models.Order.items).joinedload(crud.models.OrderItem.item)
@@ -363,11 +413,7 @@ def update_order_status(
         raise HTTPException(status_code=404, detail="Order not found.")
     
     # Check if the order belongs to the specified restaurant
-    order_restaurant_id = None
-    if db_order.items and db_order.items[0].item:
-        order_restaurant_id = db_order.items[0].item.restaurant_id
-    
-    if order_restaurant_id != restaurant_id:
+    if db_order.restaurant_id != restaurant_id:
         raise HTTPException(
             status_code=403, 
             detail="This order does not belong to the specified restaurant."
@@ -381,8 +427,8 @@ def update_order_status(
 # --- PAYMENT ---
 
 @router.get("/order/{order_id}/receipt")
-def order_receipt(
-    order_id: int,
+async def order_receipt(
+    order_id: str,
     restaurant_id: str,
     db: Session = Depends(get_db), 
     current_user: TokenData = Depends(get_current_user)
@@ -391,9 +437,12 @@ def order_receipt(
     Get the receipt for an order from a specific restaurant.
     
     Parameters:
-    - order_id: The ID of the order to get the receipt for
+    - order_id: The ID of the order to get the receipt for, in format "restaurant_id_number"
     - restaurant_id: The restaurant ID the order belongs to
     """
+    # Verify admin access
+    await verify_restaurant_admin(db, restaurant_id, current_user)
+    
     from fastapi.responses import StreamingResponse
     from reportlab.lib.pagesizes import letter
     from reportlab.pdfgen import canvas
@@ -408,19 +457,11 @@ def order_receipt(
         raise HTTPException(status_code=404, detail="Order not found.")
     
     # Check if the order belongs to the specified restaurant
-    order_restaurant_id = None
-    if db_order.items and db_order.items[0].item:
-        order_restaurant_id = db_order.items[0].item.restaurant_id
-    
-    if order_restaurant_id != restaurant_id:
+    if db_order.restaurant_id != restaurant_id:
         raise HTTPException(
             status_code=403, 
             detail="This order does not belong to the specified restaurant."
         )
-    
-    # Only admin or order owner can get receipt
-    if current_user.role != "admin" and db_order.user_id != current_user.uid:
-        raise HTTPException(status_code=403, detail="Not authorized to get this receipt.")
     
     if db_order.status not in ["Completed", "Done"] and db_order.payment_status not in ["Paid", "Refunded"]:
         raise HTTPException(status_code=400, detail="Receipt only available for completed or paid orders.")
@@ -453,8 +494,8 @@ def order_receipt(
 
 
 @router.get("/order/{order_id}/audit")
-def order_audit_log(
-    order_id: int,
+async def order_audit_log(
+    order_id: str,
     restaurant_id: str,
     db: Session = Depends(get_db), 
     current_user: TokenData = Depends(get_current_user)
@@ -463,9 +504,12 @@ def order_audit_log(
     Get the audit log for an order from a specific restaurant.
     
     Parameters:
-    - order_id: The ID of the order to get the audit log for
+    - order_id: The ID of the order to get the audit log for, in format "restaurant_id_number"
     - restaurant_id: The restaurant ID the order belongs to
     """
+    # Verify admin access
+    await verify_restaurant_admin(db, restaurant_id, current_user)
+    
     # First, verify the order exists and belongs to the specified restaurant
     db_order = db.query(crud.models.Order).options(
         joinedload(crud.models.Order.items).joinedload(crud.models.OrderItem.item)
@@ -475,19 +519,11 @@ def order_audit_log(
         raise HTTPException(status_code=404, detail="Order not found.")
     
     # Check if the order belongs to the specified restaurant
-    order_restaurant_id = None
-    if db_order.items and db_order.items[0].item:
-        order_restaurant_id = db_order.items[0].item.restaurant_id
-    
-    if order_restaurant_id != restaurant_id:
+    if db_order.restaurant_id != restaurant_id:
         raise HTTPException(
             status_code=403, 
             detail="This order does not belong to the specified restaurant."
         )
-    
-    # Only admin or order owner can view audit logs
-    if current_user.role != "admin" and db_order.user_id != current_user.uid:
-        raise HTTPException(status_code=403, detail="Not authorized to view this audit log.")
     
     logs = db.query(crud.models.AuditLog).filter(crud.models.AuditLog.order_id == order_id).order_by(crud.models.AuditLog.timestamp.desc()).all()
     
@@ -504,8 +540,8 @@ def order_audit_log(
     ]
 
 @router.put("/order/{order_id}/payment", response_model=schemas.PaymentOut)
-def update_payment_status(
-    order_id: int,
+async def update_payment_status(
+    order_id: str,
     restaurant_id: str,
     payment: schemas.PaymentCreate, 
     db: Session = Depends(get_db), 
@@ -515,10 +551,13 @@ def update_payment_status(
     Update payment status for an order from a specific restaurant.
     
     Parameters:
-    - order_id: The ID of the order to update payment for
+    - order_id: The ID of the order to update payment for, in format "restaurant_id_number"
     - restaurant_id: The restaurant ID the order belongs to
     - payment: Payment details
     """
+    # Verify admin access
+    await verify_restaurant_admin(db, restaurant_id, current_user)
+    
     # First, verify the order exists and belongs to the specified restaurant
     db_order = db.query(crud.models.Order).options(
         joinedload(crud.models.Order.items).joinedload(crud.models.OrderItem.item)
@@ -528,11 +567,7 @@ def update_payment_status(
         raise HTTPException(status_code=404, detail="Order not found.")
     
     # Check if the order belongs to the specified restaurant
-    order_restaurant_id = None
-    if db_order.items and db_order.items[0].item:
-        order_restaurant_id = db_order.items[0].item.restaurant_id
-    
-    if order_restaurant_id != restaurant_id:
+    if db_order.restaurant_id != restaurant_id:
         raise HTTPException(
             status_code=403, 
             detail="This order does not belong to the specified restaurant."
@@ -573,16 +608,30 @@ def delete_promo_code(promo_id: int, db: Session = Depends(get_db), current_user
 
 # --- ANALYTICS ---
 @router.get("/analytics/orders", response_model=dict)
-def order_analytics(period: Optional[str] = "daily", db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Only admins can view analytics.")
+async def order_analytics(
+    restaurant_id: str,
+    period: Optional[str] = "daily", 
+    db: Session = Depends(get_db), 
+    current_user: TokenData = Depends(get_current_user)
+):
+    """
+    Get order analytics for a specific restaurant
+    
+    Parameters:
+    - restaurant_id: The restaurant ID to get analytics for
+    - period: Time period for analytics (daily, weekly, monthly)
+    """
+    # Verify admin access
+    await verify_restaurant_admin(db, restaurant_id, current_user)
+    
     return crud.get_order_analytics(db, period=period)
 
 from fastapi.responses import StreamingResponse
 import io
 
 @router.get("/orders/export")
-def export_orders(
+async def export_orders(
+    restaurant_id: str,
     status: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
@@ -591,18 +640,19 @@ def export_orders(
     order_id: Optional[int] = None,
     user_email: Optional[str] = None,
     user_phone: Optional[str] = None,
-    restaurant_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: TokenData = Depends(get_current_user)
 ):
     """
-    Export orders to CSV with optional filters including restaurant_id
+    Export orders to CSV with optional filters for a specific restaurant
     """
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Only admins can export orders.")
+    # Verify admin access
+    await verify_restaurant_admin(db, restaurant_id, current_user)
+    
     from datetime import datetime
     start = datetime.fromisoformat(start_date) if start_date else None
     end = datetime.fromisoformat(end_date) if end_date else None
+    
     orders = crud.filter_orders(
         db,
         status=status,
@@ -615,6 +665,7 @@ def export_orders(
         user_phone=user_phone,
         restaurant_id=restaurant_id
     )
+    
     csv_data = crud.export_orders_csv(db, orders)
     return StreamingResponse(io.StringIO(csv_data), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=orders.csv"})
 

@@ -1,0 +1,26 @@
+{
+  "name": "loyalty-backend",
+  "description": "Loyalty program backend API",
+  "repository": "https://github.com/yourusername/loyalty_backend",
+  "keywords": ["fastapi", "loyalty", "api"],
+  "env": {
+    "JWT_SECRET": {
+      "description": "Secret key for JWT token generation",
+      "required": true,
+      "generator": "secret"
+    },
+    "ENVIRONMENT": {
+      "description": "Application environment",
+      "value": "production"
+    },
+    "APP_VERSION": {
+      "description": "Application version",
+      "value": "1.0.0"
+    }
+  },
+  "healthchecks": {
+    "web": {
+      "path": "/health"
+    }
+  }
+} 

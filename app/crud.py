@@ -259,10 +259,19 @@ def create_order(db: Session, order: schemas.OrderCreate, user_id: str, admin_ui
     if not order.items or not isinstance(order.items, list):
         raise Exception("Order must contain at least one item.")
     seen_items = set()
-    restaurant_id = None
+    
+    # Always use the restaurant_id from the order
+    restaurant_id = order.restaurant_id
+    restaurant_name = None
+    
+    # Try to get restaurant name
+    restaurant = db.query(models.Restaurant).filter(models.Restaurant.restaurant_id == restaurant_id).first()
+    if restaurant:
+        restaurant_name = restaurant.restaurant_name
+    
     db_items = []
     
-    # Validate items and get restaurant_id
+    # Validate items
     for item in order.items:
         if not hasattr(item, 'item_id') or not hasattr(item, 'quantity'):
             raise Exception("Each order item must have item_id and quantity.")
@@ -280,12 +289,9 @@ def create_order(db: Session, order: schemas.OrderCreate, user_id: str, admin_ui
         if not db_menu_item:
             raise Exception(f"Menu item not found or unavailable: {item.item_id}")
             
-        # Ensure all items are from the same restaurant
-        if restaurant_id is None:
-            restaurant_id = db_menu_item.restaurant_id
-        elif restaurant_id != db_menu_item.restaurant_id:
-            raise Exception("All items must be from the same restaurant")
-            
+        # No longer enforcing item restaurant_id to match order restaurant_id
+        # Use the items as long as they exist, regardless of their restaurant
+        
         # Store validated items
         db_items.append((db_menu_item, item.quantity))
 
@@ -304,14 +310,31 @@ def create_order(db: Session, order: schemas.OrderCreate, user_id: str, admin_ui
         if promo:
             promo_code_id = promo.id
 
+    # Generate restaurant-specific order number
+    # Find the highest order_number for this restaurant
+    latest_order = db.query(models.Order).filter(
+        models.Order.restaurant_id == restaurant_id
+    ).order_by(models.Order.order_number.desc()).first()
+    
+    order_number = 1  # Default start
+    if latest_order and latest_order.order_number:
+        order_number = latest_order.order_number + 1
+    
+    # Generate order ID in format "restaurant_id{order_number}"
+    order_id = f"{restaurant_id}_{order_number}"
+    
     # Create order
     db_order = models.Order(
+        id=order_id,
+        order_number=order_number,
         user_id=user_id,
         created_at=datetime.utcnow(),
         status="Pending",
         total_cost=total_cost,
         payment_status="Pending",
-        promo_code_id=promo_code_id
+        promo_code_id=promo_code_id,
+        restaurant_id=restaurant_id,
+        restaurant_name=restaurant_name
     )
     if admin_uid:
         db_order.admin_uid = admin_uid
@@ -344,7 +367,6 @@ def create_order(db: Session, order: schemas.OrderCreate, user_id: str, admin_ui
     except Exception as e:
         db.rollback()
         raise Exception(f"Error creating order: {str(e)}")
-    return db_order
 
 def get_orders_by_user(db: Session, user_id: str, restaurant_id: Optional[str] = None):
     """Get orders for a specific user with a fault-tolerant approach."""

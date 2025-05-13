@@ -126,13 +126,16 @@ class MenuItem(Base):
 
 class Order(Base):
     __tablename__ = "orders"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String, primary_key=True, index=True)  # Changed to String for format "restaurant_id{number}"
     user_id = Column(String, ForeignKey("users.uid"), nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     status = Column(String, default="Order Placed")  # Order Placed -> Order Confirmed -> Payment Done
     total_cost = Column(Float, nullable=False)
     payment_status = Column(String, default="Pending")
     promo_code_id = Column(Integer, ForeignKey("promo_codes.id"), nullable=True)
+    restaurant_id = Column(String, nullable=True)
+    restaurant_name = Column(String, nullable=True)
+    order_number = Column(Integer, nullable=True)  # Store the numeric part separately
     items = relationship("OrderItem", back_populates="order")
     user = relationship("User")
     payment = relationship("Payment", uselist=False, back_populates="order")
