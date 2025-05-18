@@ -1,11 +1,12 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.endpoints import auth, otp, restaurants, loyalty, rewards, referrals, spin, analytics, dashboard, admin, ordering
+from app.api.endpoints import auth, otp, restaurants, loyalty, rewards, referrals, spin, analytics, dashboard, admin, ordering, employees, coupons
+from app.api.endpoints import inventory
 from app.utils.bhashsms_instance import bhashsms
 import logging
 import os
 from sqlalchemy import text
-from app.database import get_db, engine
+from app.database import get_db, engine, Base
 
 # Configure logging
 logging.basicConfig(
@@ -47,6 +48,9 @@ app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"]
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 app.include_router(ordering.router, tags=["ordering"])
+app.include_router(employees.router, prefix="/api", tags=["employees"])
+app.include_router(coupons.router, prefix="/api/coupons", tags=["coupons"])
+app.include_router(inventory.router, prefix="/api", tags=["inventory"])
 
 @app.get("/")
 async def read_root():
@@ -77,7 +81,24 @@ async def health_check(db=Depends(get_db)):
 async def startup_event():
     """Application startup: log information about the environment"""
     logger.info(f"Starting Loyalty Backend API in {ENV} mode (version: {VERSION})")
-    logger.info(f"Database connection established")
+    
+    # Initialize database tables
+    try:
+        # Import models here to avoid circular imports
+        from app.models import (
+            User, Restaurant, Loyalty, Submission, ClaimedReward, 
+            AuditLog, MenuCategory, MenuItem, Order, OrderItem, 
+            OrderStatusHistory, Payment, PromoCode, VerifiedPhoneNumber
+        )
+        
+        # Create all tables
+        logger.info("Creating database tables if they don't exist - SKIPPED (handled by Alembic)")
+        # Base.metadata.create_all(bind=engine) # TEMPORARILY COMMENTED OUT
+        # logger.info("Database tables created successfully")
+    except Exception as e:
+        logger.error(f"Error during startup related to database (create_all commented out): {e}")
+    
+    logger.info(f"Database connection established (models imported, create_all skipped)")
 
 @app.on_event("shutdown")
 async def shutdown_event():

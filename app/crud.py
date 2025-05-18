@@ -1,25 +1,32 @@
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 from . import models, schemas
-from typing import List, Optional
+from typing import List, Optional, Tuple, Dict, Any
 from sqlalchemy.exc import IntegrityError
-from datetime import datetime
+from sqlalchemy import func, desc, or_
+from datetime import datetime, timedelta
 from .utils.timezone import ist_now, utc_to_ist
 from .auth.custom_auth import get_password_hash
 import logging
 import uuid
+import re
+from .crud_inventory import deduct_inventory_for_sale
 
 logger = logging.getLogger(__name__)
 
 def create_user(db: Session, user: schemas.UserCreate) -> models.User:
     uid = str(uuid.uuid4())
+    
+    # Prepare data for User model, ensuring all fields from UserCreate are included
+    user_data = user.dict(exclude_unset=True) # Exclude unset to handle optional fields gracefully
+    
+    # Handle password separately for hashing
+    hashed_password = get_password_hash(user_data.pop('password'))
+
     db_user = models.User(
         uid=uid,
-        email=user.email,
-        name=user.name,
-        number=user.number,
-        hashed_password=get_password_hash(user.password),
-        role=user.role,
-        created_at=datetime.utcnow()
+        hashed_password=hashed_password,
+        created_at=datetime.utcnow(),
+        **user_data  # Unpack remaining fields: email, name, number, role, restaurant_id, designation, permissions
     )
     db.add(db_user)
     db.commit()
@@ -59,48 +66,48 @@ def delete_user(db: Session, uid: str) -> bool:
 
 import re
 
-def slugify(name: str) -> str:
-    # Lowercase, replace spaces and non-alphanum with underscores
-    slug = re.sub(r'[^a-zA-Z0-9]+', '_', name.strip().lower())
-    slug = re.sub(r'_+', '_', slug)  # collapse multiple underscores
-    return slug.strip('_')
+def slugify(text: str) -> str:
+    # A simple slugify function, can be enhanced
+    text = text.lower()
+    text = re.sub(r'[^a-z0-9]+', '-', text).strip('-')
+    return text
 
-def create_restaurant(db: Session, restaurant: schemas.RestaurantCreate):
+def create_restaurant(db: Session, restaurant: schemas.RestaurantCreate, owner_uid: str):
     # Generate a unique restaurant_id (slug) from name
     base_slug = slugify(restaurant.restaurant_name)
     slug = base_slug
     suffix = 1
+    # Check if slug already exists
     while db.query(models.Restaurant).filter(models.Restaurant.restaurant_id == slug).first():
-        slug = f"{base_slug}_{suffix}"
+        slug = f"{base_slug}-{suffix}" # Use hyphen for better readability
         suffix += 1
-    data = restaurant.dict(exclude={"restaurant_id"}, exclude_unset=True)
+    
+    # Get all data from the Pydantic schema, including new fields with their defaults
+    # owner_uid is now passed explicitly to the function, not taken from schema directly for creation.
+    data = restaurant.dict(exclude_unset=True) # exclude_unset=True is good for updates, for create we want all fields including defaults from schema
+    
+    # Ensure restaurant_id (slug) and owner_uid are set correctly
     data["restaurant_id"] = slug
-    data["created_at"] = datetime.utcnow()
+    data["owner_uid"] = owner_uid # Set owner_uid from the authenticated user creating it
+    
+    # created_at is handled by the model's default
+    # admin_uid can also be set here if the owner is also the initial admin
+    if "admin_uid" not in data or data["admin_uid"] is None:
+        data["admin_uid"] = owner_uid
+
+    # All other fields from RestaurantCreate (address, contact_phone, email, tax_id, currency, timezone,
+    # opening_time, closing_time, is_open, weekly_off_days, accepted_payment_modes,
+    # allow_manual_discount, bill_number_prefix, bill_series_start, 
+    # show_tax_breakdown_on_invoice, enable_tips_collection,
+    # offers, points_per_rupee, points_per_spin, reward_thresholds, spend_thresholds, referral_rewards)
+    # should be present in `data` if they were provided in the request or have defaults in `schemas.RestaurantCreate`.
+    # The model `models.Restaurant` has defaults for some of these too.
+
     db_restaurant = models.Restaurant(**data)
     db.add(db_restaurant)
     db.commit()
     db.refresh(db_restaurant)
     return db_restaurant
-
-def update_restaurant(db: Session, restaurant_id: str, restaurant: schemas.RestaurantCreate):
-    db_restaurant = db.query(models.Restaurant).filter(models.Restaurant.restaurant_id == restaurant_id).first()
-    if not db_restaurant:
-        return None
-    for field, value in restaurant.dict(exclude_unset=True).items():
-        setattr(db_restaurant, field, value)
-    db.commit()
-    db.refresh(db_restaurant)
-    return db_restaurant
-
-def generate_coupon_code(db: Session):
-    import random, string
-    max_attempts = 1000
-    for _ in range(max_attempts):
-        code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-        exists = db.query(models.ClaimedReward).filter(models.ClaimedReward.coupon_code == code).first()
-        if not exists:
-            return code
-    raise Exception("Unable to generate unique coupon code after 1000 attempts")
 
 def get_restaurant(db: Session, restaurant_id: str):
     return db.query(models.Restaurant).filter(models.Restaurant.restaurant_id == restaurant_id).first()
@@ -224,9 +231,18 @@ def get_all_menu_items(db: Session, restaurant_id: str):
     return db.query(models.MenuItem).filter(models.MenuItem.restaurant_id == restaurant_id).all()
 
 def create_menu_item(db: Session, restaurant_id: str, item: schemas.MenuItemCreate):
-    # Create a dictionary from the item but exclude restaurant_id since it's already provided
-    item_data = item.dict(exclude={'restaurant_id'})
-    db_item = models.MenuItem(**item_data, restaurant_id=restaurant_id)
+    # Convert Pydantic MenuItemVariationSchema to dicts if they are provided
+    variations_data = None
+    if item.variations:
+        variations_data = [v.dict() for v in item.variations]
+
+    item_data = item.dict(exclude={'restaurant_id', 'variations'}) # Exclude variations for now, will add it separately
+    
+    db_item = models.MenuItem(
+        **item_data, 
+        restaurant_id=restaurant_id,
+        variations=variations_data # Add the processed variations data
+    )
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
@@ -254,7 +270,7 @@ def delete_menu_item(db: Session, item_id: int, restaurant_id: str):
     return False
 
 # --- Orders ---
-def create_order(db: Session, order: schemas.OrderCreate, user_id: str, admin_uid: Optional[str] = None):
+def create_order(db: Session, order: schemas.OrderCreate, user_uid: str, user_role: str, admin_uid: Optional[str] = None):
     # Validate input
     if not order.items or not isinstance(order.items, list):
         raise Exception("Order must contain at least one item.")
@@ -291,7 +307,7 @@ def create_order(db: Session, order: schemas.OrderCreate, user_id: str, admin_ui
             
         # No longer enforcing item restaurant_id to match order restaurant_id
         # Use the items as long as they exist, regardless of their restaurant
-        
+            
         # Store validated items
         db_items.append((db_menu_item, item.quantity))
 
@@ -322,12 +338,14 @@ def create_order(db: Session, order: schemas.OrderCreate, user_id: str, admin_ui
     
     # Generate order ID in format "restaurant_id{order_number}"
     order_id = f"{restaurant_id}_{order_number}"
-    
+
     # Create order
     db_order = models.Order(
         id=order_id,
         order_number=order_number,
-        user_id=user_id,
+        user_uid=user_uid,
+        user_role=user_role,
+        table_number=order.table_number,
         created_at=datetime.utcnow(),
         status="Pending",
         total_cost=total_cost,
@@ -341,25 +359,45 @@ def create_order(db: Session, order: schemas.OrderCreate, user_id: str, admin_ui
     
     # Add both order and order items in a single transaction
     try:
-        # First commit the order to get an ID
+        # Add the order to the session. ID is manually generated so it's available.
         db.add(db_order)
-        db.commit()
-        db.refresh(db_order)
         
         # Now create and add order items with the order ID
-        order_items = []
+        order_items_models = []
         for db_menu_item, qty in db_items:
             order_item = models.OrderItem(
-                order_id=db_order.id,
+                order_id=db_order.id, 
                 item_id=db_menu_item.id,
                 quantity=qty,
                 price=db_menu_item.price
             )
-            order_items.append(order_item)
+            order_items_models.append(order_item)
         
-        db.add_all(order_items)
+        db.add_all(order_items_models)
+        
+        # Deduct inventory for each item in the order
+        # This should happen before the final commit of the order transaction
+        for db_menu_item, qty_sold in db_items:
+            # crud_inventory.deduct_inventory_for_sale expects restaurant_id, menu_item_id, quantity_sold, order_id, changed_by_user_id
+            deduct_inventory_for_sale(
+                db=db,
+                restaurant_id=db_order.restaurant_id,
+                menu_item_id=db_menu_item.id,
+                quantity_sold=float(qty_sold), # Ensure quantity is float for consistency with model
+                order_id=db_order.id,
+                changed_by_user_id=user_uid # user_uid is the user placing the order
+            )
+            # deduct_inventory_for_sale handles its own logging for inventory changes.
+            # It will create an InventoryUpdateLog entry.
+
+        # Commit all changes together: order, order_items, and inventory adjustments (via logs)
         db.commit()
-        db.refresh(db_order)
+        db.refresh(db_order) # Refresh to get any DB-generated changes for the order
+        
+        # If OrderOut schema expects items to be populated, ensure they are.
+        # SQLAlchemy relationships usually handle this (lazy loading or eager loading if configured).
+        # db.refresh(db_order.items) # Not usually needed explicitly if using relationship correctly
+        
         return db_order
     except IntegrityError as e:
         db.rollback()
@@ -368,12 +406,12 @@ def create_order(db: Session, order: schemas.OrderCreate, user_id: str, admin_ui
         db.rollback()
         raise Exception(f"Error creating order: {str(e)}")
 
-def get_orders_by_user(db: Session, user_id: str, restaurant_id: Optional[str] = None):
+def get_orders_by_user(db: Session, user_uid: str, restaurant_id: Optional[str] = None):
     """Get orders for a specific user with a fault-tolerant approach."""
     try:
         # Get base orders for this user
         orders = db.query(models.Order).filter(
-            models.Order.user_id == user_id
+            models.Order.user_uid == user_uid
         ).order_by(models.Order.created_at.desc()).all()
         
         result_orders = []
@@ -381,7 +419,9 @@ def get_orders_by_user(db: Session, user_id: str, restaurant_id: Optional[str] =
             # Add minimal order info to result
             order_dict = {
                 "id": order.id,
-                "user_id": order.user_id,
+                "user_uid": order.user_uid,
+                "user_role": order.user_role,
+                "table_number": order.table_number,
                 "created_at": order.created_at,
                 "status": order.status,
                 "total_cost": order.total_cost,
@@ -497,14 +537,19 @@ def get_all_orders(db: Session, restaurant_id: Optional[str] = None):
     """Get all orders with a fault-tolerant approach that works with schema changes."""
     try:
         # Get orders with minimal relationships first to avoid schema issues
-        orders = db.query(models.Order).order_by(models.Order.created_at.desc()).all()
+        orders_query = db.query(models.Order).order_by(models.Order.created_at.desc())
+        if restaurant_id:
+            orders_query = orders_query.filter(models.Order.restaurant_id == restaurant_id)
+        orders = orders_query.all()
         
         result_orders = []
         for order in orders:
             # Add minimal order info to result
             order_dict = {
                 "id": order.id,
-                "user_id": order.user_id,
+                "user_uid": order.user_uid,
+                "user_role": order.user_role,
+                "table_number": order.table_number,
                 "created_at": order.created_at,
                 "status": order.status,
                 "total_cost": order.total_cost,
@@ -617,7 +662,7 @@ def get_all_orders(db: Session, restaurant_id: Optional[str] = None):
         # Return empty list in case of error
         return []
 
-def filter_orders(db: Session, status=None, start_date=None, end_date=None, payment_method=None, user_id=None, order_id=None, user_email=None, user_phone=None, restaurant_id=None):
+def filter_orders(db: Session, status=None, start_date=None, end_date=None, payment_method=None, user_uid: Optional[str]=None, order_id: Optional[str]=None, user_email: Optional[str]=None, user_phone: Optional[str]=None, restaurant_id: Optional[str]=None):
     """Filter orders with a fault-tolerant approach."""
     try:
         # Start with a base query
@@ -632,9 +677,11 @@ def filter_orders(db: Session, status=None, start_date=None, end_date=None, paym
             query = query.filter(models.Order.created_at <= end_date)
         if order_id:
             query = query.filter(models.Order.id == order_id)
-        if user_id:
-            query = query.filter(models.Order.user_id == user_id)
-        
+        if user_uid:
+            query = query.filter(models.Order.user_uid == user_uid)
+        if restaurant_id:
+            query = query.filter(models.Order.restaurant_id == restaurant_id)
+
         # Get the filtered orders
         orders = query.order_by(models.Order.created_at.desc()).all()
         
@@ -644,7 +691,9 @@ def filter_orders(db: Session, status=None, start_date=None, end_date=None, paym
             # Initialize with base order fields
             order_dict = {
                 "id": order.id,
-                "user_id": order.user_id,
+                "user_uid": order.user_uid,
+                "user_role": order.user_role,
+                "table_number": order.table_number,
                 "created_at": order.created_at,
                 "status": order.status,
                 "total_cost": order.total_cost,
@@ -668,7 +717,7 @@ def filter_orders(db: Session, status=None, start_date=None, end_date=None, paym
             # Apply user email and phone filters safely
             if user_email or user_phone:
                 try:
-                    user = db.query(models.User).filter(models.User.uid == order.user_id).first()
+                    user = db.query(models.User).filter(models.User.uid == order.user_uid).first()
                     if not user:
                         continue
                     
@@ -822,26 +871,119 @@ def update_order_status(db: Session, order_id: int, status: str, changed_by: str
 def confirm_order(db: Session, order_id: int, changed_by: str):
     return update_order_status(db, order_id, "Order Confirmed", changed_by)
 
-def mark_order_paid(db: Session, order_id: int, changed_by: str):
-    db_order = db.query(models.Order).filter(models.Order.id == order_id).first()
+def mark_order_paid(db: Session, order_id: str, changed_by: str, payment_method: str, transaction_id: Optional[str] = None):
+    db_order = db.query(models.Order).options(
+        joinedload(models.Order.items).joinedload(models.OrderItem.item).joinedload(models.MenuItem.category),
+        joinedload(models.Order.user),
+        joinedload(models.Order.promo_code),
+        joinedload(models.Order.payment) # Eager load existing payment record
+    ).filter(models.Order.id == order_id).first()
+
     if not db_order:
-        raise Exception("Order not found")
-    db_order.payment_status = "Paid"
+        raise ValueError(f"Order {order_id} not found")
+
+    # If already paid, and no further action is needed, can return early.
+    # However, the function might be used to update transaction_id or other details even if already paid.
+    # For inventory deduction, we specifically want to avoid re-deducting.
+    # if db_order.payment_status == "Paid":
+    #     logging.info(f"Order {order_id} is already marked as Paid. No further payment status change.")
+    #     # return db_order # Or raise appropriate HTTP exception
+
+    # Log the billing details (existing logging is good here)
+    customer_name = db_order.user.name if db_order.user else "N/A"
+    customer_email = db_order.user.email if db_order.user else "N/A"
+    promo_code_details = "None"
+    if db_order.promo_code:
+        promo_code_details = f"Code: {db_order.promo_code.code}, Discount: {db_order.promo_code.discount_percent or db_order.promo_code.discount_amount}"
     
-    # Add status history record
-    status_history = models.OrderStatusHistory(
-        order_id=order_id,
-        status="Payment Done",
-        changed_by=changed_by
-    )
-    db.add(status_history)
-    
-    # Also update Payment record if present
+    logging.info(f"--- BILLING EVENT: Order {order_id} Marked Paid by {changed_by} via {payment_method} ---")
+    logging.info(f"Transaction ID: {transaction_id if transaction_id else 'N/A'}")
+    logging.info(f"Customer: {customer_name} (UID: {db_order.user_uid}, Email: {customer_email})")
+    logging.info(f"Restaurant: {db_order.restaurant_id} ({db_order.restaurant_name})")
+    logging.info(f"Table Number: {db_order.table_number if db_order.table_number else 'N/A'}")
+    logging.info(f"Total Cost: {db_order.total_cost}")
+    logging.info(f"Promo Code Applied: {promo_code_details}")
+    logging.info("Items Billed:")
+    for item in db_order.items:
+        logging.info(f"  - {item.quantity} x {item.item.name if item.item else 'Unknown Item'} @ {item.price} each")
+    logging.info(f"--- END BILLING EVENT --- ")
+
+    # Deduct inventory for each item in the order when marking as paid.
+    # IMPORTANT: Inventory is also deducted in `create_order` and `add_items_to_order`.
+    # Review to ensure this is the desired behavior and to avoid double-deduction
+    # if `deduct_inventory_for_sale` is not idempotent for this specific combination
+    # of calls across the order lifecycle.
+    # This block assumes that if `deduct_inventory_for_sale` fails, it will raise an
+    # exception, which will be caught by the outer try-except block of this function,
+    # leading to a rollback of the entire transaction.
+
+    if db_order.payment_status != "Paid":
+        logger.info(f"Order {order_id} current payment_status is '{db_order.payment_status}'. Proceeding with inventory deduction.")
+        for order_item_model in db_order.items:
+            if order_item_model.item and order_item_model.quantity > 0: # Ensure item exists and quantity is positive
+                logger.info(f"Deducting inventory for order {db_order.id}, item {order_item_model.item_id} (menu item name: {order_item_model.item.name if order_item_model.item else 'N/A'}), quantity {order_item_model.quantity}.")
+                deduct_inventory_for_sale(
+                    db=db,
+                    restaurant_id=db_order.restaurant_id,
+                    menu_item_id=order_item_model.item_id, # ID of the MenuItem
+                    quantity_sold=float(order_item_model.quantity),
+                    order_id=db_order.id,
+                    changed_by_user_id=changed_by # User who is marking the order paid
+                )
+                logger.info(f"Inventory deduction call for order {db_order.id}, item {order_item_model.item_id} completed.")
+    else:
+        logger.info(f"Order {order_id} is already 'Paid'. Skipping inventory deduction step in `mark_order_paid`.")
+
+    # Create or Update Payment record
     if db_order.payment:
-        db_order.payment.status = "Paid"
-        db_order.payment.paid_at = datetime.utcnow()
-    db.commit()
-    db.refresh(db_order)
+        db_payment = db_order.payment
+        db_payment.amount = db_order.total_cost # Ensure amount is correct
+        db_payment.method = payment_method
+        db_payment.status = "Paid"
+        db_payment.paid_at = datetime.utcnow()
+        db_payment.transaction_id = transaction_id
+        db_payment.processed_at = datetime.utcnow() # Update processed_at as well
+    else:
+        db_payment = models.Payment(
+            order_id=db_order.id,
+            amount=db_order.total_cost,
+            method=payment_method,
+            status="Paid",
+            paid_at=datetime.utcnow(),
+            transaction_id=transaction_id,
+            processed_at=datetime.utcnow()
+        )
+        db.add(db_payment)
+        db_order.payment = db_payment # Associate with the order for the session
+
+    db_order.payment_status = "Paid"
+    db_order.status = "Payment Done"  # Or another appropriate status like "Completed"
+    db_order.updated_at = datetime.utcnow()
+    
+    # Create an audit log for payment
+    create_audit_log(db, schemas.AuditLogCreate(
+        user_id=changed_by, 
+        action="Order Marked Paid", 
+        details={
+            "order_id": order_id, 
+            "marked_by": changed_by, 
+            "payment_method": payment_method,
+            "transaction_id": transaction_id,
+            "new_payment_status": "Paid"
+        },
+        order_id=order_id # Link audit log to the order
+    ))
+    
+    try:
+        db.commit()
+        db.refresh(db_order)
+        if db_order.payment: # Refresh payment if it was created/updated
+            db.refresh(db_order.payment)
+    except Exception as e:
+        db.rollback()
+        logging.error(f"Error committing payment for order {order_id}: {e}", exc_info=True)
+        raise # Re-raise the exception to be handled by the endpoint
+        
     return db_order
 
 def cancel_order(db: Session, order_id: int, cancelled_by: str):
@@ -985,18 +1127,20 @@ def get_order_analytics(db: Session, period: str = "daily"):
         "popular_items": [{"name": n, "quantity": q} for n, q in popular]
     }
 
-def export_orders_csv(db: Session, orders):
+def export_orders_csv(db: Session, orders: List[models.Order]):
     import csv
     from io import StringIO
     output = StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Order ID", "User ID", "Restaurant ID", "Restaurant Name", "Created At", "Status", "Total Cost", "Payment Status"])
+    writer.writerow(["Order ID", "User UID", "User Role", "Table Number", "Restaurant ID", "Restaurant Name", "Created At", "Status", "Total Cost", "Payment Status"])
     for order in orders:
         restaurant_id = getattr(order, 'restaurant_id', None) 
         restaurant_name = getattr(order, 'restaurant_name', None)
         writer.writerow([
             order.id, 
-            order.user_id, 
+            order.user_uid,
+            order.user_role,
+            order.table_number,
             restaurant_id,
             restaurant_name,
             order.created_at, 
@@ -1005,4 +1149,151 @@ def export_orders_csv(db: Session, orders):
             order.payment_status
         ])
     return output.getvalue()
+
+# --- Order ---
+
+def get_unpaid_order_by_table(db: Session, restaurant_id: str, table_number: str) -> Optional[models.Order]:
+    """Fetches an unpaid order for a specific table and restaurant."""
+    if not table_number: # Cannot search for null table number this way
+        return None
+    return db.query(models.Order).options(
+        joinedload(models.Order.items).options(joinedload(models.OrderItem.item)) # Eager load items and their menu item details
+    ).filter(
+        models.Order.restaurant_id == restaurant_id,
+        models.Order.table_number == table_number,
+        models.Order.payment_status == "Pending"
+    ).first()
+
+def add_items_to_order(db: Session, existing_order: models.Order, new_items_create: List[schemas.OrderItemCreate], user_uid: str) -> Tuple[models.Order, List[models.OrderItem]]:
+    """Adds new items to an existing order and recalculates total cost.
+    Returns the updated order and a list of OrderItem model instances that were newly created or had their quantity updated.
+    """
+    if not new_items_create:
+        raise ValueError("Must provide items to add.")
+
+    # Ensure existing_order.items is loaded.
+    # The get_unpaid_order_by_table should have eager loaded this.
+    # If not, a quick refresh or re-query might be needed, but let's assume it's loaded.
+
+    affected_item_models: List[models.OrderItem] = []
+
+    for item_to_add in new_items_create: # item_to_add is schemas.OrderItemCreate
+        menu_item_db = db.query(models.MenuItem).filter(
+            models.MenuItem.id == item_to_add.item_id,
+            models.MenuItem.available == True,
+            models.MenuItem.restaurant_id == existing_order.restaurant_id
+        ).first()
+
+        if not menu_item_db:
+            raise ValueError(f"Menu item with ID {item_to_add.item_id} for restaurant {existing_order.restaurant_id} not found or unavailable.")
+        
+        if item_to_add.quantity <= 0:
+            raise ValueError(f"Quantity for item ID {item_to_add.item_id} must be positive.")
+
+        # Deduct inventory for the item being added/updated
+        # This should happen before the item quantity is updated in the order or a new item is added
+        deduct_inventory_for_sale(
+            db=db,
+            restaurant_id=existing_order.restaurant_id,
+            menu_item_id=menu_item_db.id, # Use menu_item_db.id as it's confirmed valid
+            quantity_sold=float(item_to_add.quantity), # Quantity being added in this operation
+            order_id=existing_order.id,
+            changed_by_user_id=user_uid # user_uid is the user performing this action
+        )
+
+        # Check if item already exists in the order to update quantity
+        item_model_in_order = None
+        for current_item_in_order in existing_order.items: # these are models.OrderItem
+            if current_item_in_order.item_id == item_to_add.item_id:
+                item_model_in_order = current_item_in_order
+                break
+        
+        if item_model_in_order:
+            item_model_in_order.quantity += item_to_add.quantity
+            affected_item_models.append(item_model_in_order)
+        else:
+            new_order_item_model = models.OrderItem(
+                order_id=existing_order.id, # Associate with existing order
+                item_id=menu_item_db.id,
+                quantity=item_to_add.quantity,
+                price=menu_item_db.price 
+            )
+            db.add(new_order_item_model) # Add to session
+            existing_order.items.append(new_order_item_model) # Add to the Order's item collection
+            affected_item_models.append(new_order_item_model)
+            
+    # Recalculate total cost from the now updated existing_order.items list
+    recalculated_total_cost = 0
+    for item_in_final_list in existing_order.items:
+        recalculated_total_cost += (item_in_final_list.price * item_in_final_list.quantity)
+        
+    existing_order.total_cost = recalculated_total_cost
+    existing_order.updated_at = datetime.utcnow()
+    
+    try:
+        # The inventory deductions are already part of the session (flushed by deduct_inventory_for_sale if it does that, or just added to session).
+        # The main db.commit() here will save order changes, new/updated order items, and inventory log entries.
+        db.commit()
+        db.refresh(existing_order) # Refresh the main order object
+
+        # After commit, the affected_item_models (especially new ones) will have IDs.
+        # Refresh each affected item to ensure all fields are up-to-date from DB 
+        # and relationships like '.item' are loaded if needed for the return to endpoint.
+        refreshed_affected_items_for_return: List[models.OrderItem] = []
+        for affected_model_item in affected_item_models:
+            db.refresh(affected_model_item)
+            # Eagerly load the .item (MenuItem) relationship for each affected OrderItem
+            if not affected_model_item.item: # If .item is not loaded
+                 db.refresh(affected_model_item, attribute_names=['item'])
+            # Further eager load item.category if your schemas.OrderItemOut needs it
+            if affected_model_item.item and not affected_model_item.item.category:
+                 db.refresh(affected_model_item.item, attribute_names=['category'])
+            refreshed_affected_items_for_return.append(affected_model_item)
+
+    except IntegrityError as e:
+        db.rollback()
+        logger.error(f"IntegrityError adding items to order {existing_order.id}: {e}")
+        raise ValueError(f"Could not add items due to a database conflict: {e}")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error adding items to order {existing_order.id}: {e}")
+        # Consider logging exc_info=True for full traceback
+        raise Exception(f"An unexpected error occurred while adding items: {str(e)}")
+        
+    return existing_order, refreshed_affected_items_for_return # MODIFIED
+
+# --- User Dashboard --- 
+
+def get_user_dashboard_data(db: Session, user_uid: str, restaurant_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """ 
+    Gathers data for a user's dashboard, including profile, orders, loyalty, and rewards.
+    Returns None if the user is not found.
+    """
+    # Fetch user profile
+    user_profile = get_user(db, uid=user_uid)
+    if not user_profile:
+        logger.info(f"User dashboard data requested for non-existent user UID: {user_uid}")
+        return None # User not found
+
+    # Fetch user orders
+    # get_orders_by_user is fault-tolerant and returns List[Dict]
+    user_orders = get_orders_by_user(db, user_uid=user_uid, restaurant_id=restaurant_id)
+
+    # Fetch user loyalty information
+    # list_loyalties returns List[models.Loyalty]
+    user_loyalty_info = list_loyalties(db, uid=user_uid)
+
+    # Fetch user claimed rewards
+    # list_claimed_rewards returns List[models.ClaimedReward]
+    user_claimed_rewards = list_claimed_rewards(db, uid=user_uid)
+
+    dashboard_data = {
+        "profile": user_profile,  # models.User object
+        "orders": user_orders,    # List[Dict]
+        "loyalty_info": user_loyalty_info,  # List[models.Loyalty]
+        "claimed_rewards": user_claimed_rewards  # List[models.ClaimedReward]
+    }
+    
+    logger.info(f"Successfully compiled dashboard data for user UID: {user_uid}")
+    return dashboard_data
 
