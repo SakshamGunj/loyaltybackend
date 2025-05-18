@@ -1,0 +1,16 @@
+2025-05-16 18:19:19,010 - app.utils.bhashsms_automation - INFO - === Starting new BhashSMS session ===
+2025-05-16 18:19:19,174 - app.main - INFO - Starting Loyalty Backend API in development mode (version: 1.0.0)
+2025-05-16 18:19:19,174 - app.main - INFO - Creating database tables if they don't exist - SKIPPED (handled by Alembic)
+2025-05-16 18:19:19,177 - app.main - INFO - Database connection established (models imported, create_all skipped)
+2025-05-16 18:19:19,674 - root - ERROR - Error marking order the-grand-eatery_4 paid: type object 'Order' has no attribute 'promo_code'
+Traceback (most recent call last):
+  File "C:\Users\gunj0\CascadeProjects\loyalty_backend\app\api\endpoints\ordering.py", line 159, in mark_order_paid_endpoint
+    updated_order = crud.mark_order_paid(
+                    ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\CascadeProjects\loyalty_backend\app\crud\general.py", line 517, in mark_order_paid
+    selectinload(models.Order.promo_code),
+                 ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: type object 'Order' has no attribute 'promo_code'
+2025-05-16 18:20:10,189 - app.main - INFO - Shutting down Loyalty Backend API
+2025-05-16 18:20:10,189 - app.utils.bhashsms_automation - INFO - Initializing BhashSMS automation
+2025-05-16 18:20:11,719 - app.utils.bhashsms_automation - INFO - Chrome WebDriver initialized successfully

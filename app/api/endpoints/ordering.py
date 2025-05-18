@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, status, WebSocket, WebSocketDisconnect, File, UploadFile
 from sqlalchemy.orm import Session, joinedload, selectinload
 from typing import List, Optional
 from ... import schemas, crud, models
@@ -10,6 +10,10 @@ from datetime import datetime
 import logging
 import asyncio
 import json
+import pandas as pd
+import io
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["ordering"])
 
@@ -84,6 +88,215 @@ async def delete_menu_item(item_id: int, restaurant_id: str, db: Session = Depen
     if not deleted:
         raise HTTPException(status_code=404, detail="Menu item not found")
     return {"ok": True}
+
+@router.post("/menu/items/bulk_upload", response_model=schemas.StandardResponse)
+async def bulk_create_menu_items(
+    restaurant_id: str, 
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db), 
+    current_user: TokenData = Depends(get_current_user)
+):
+    """
+    Bulk create menu items and their variations for a specific restaurant by uploading a CSV or Excel file.
+
+    **Required Columns in the file:**
+    - `category_name` (Mandatory): Name of the menu category. Will be created if it doesn't exist.
+    - `item_name` (Mandatory): Name of the menu item.
+    - `item_price` (Mandatory for base item/first variation): Price of the base item or first variation.
+    - `inventory_available` (Mandatory): "True" or "False" indicating if inventory is tracked.
+    - `inventory_quantity` (Mandatory if inventory_available is True, otherwise ignored/optional): Current stock quantity.
+    
+    **Optional Columns:**
+    - `item_description`: Description of the menu item.
+    - `item_cost_price`: Cost price of the base item.
+    - `item_available` (default: True): "True" or "False".
+    - `item_image_url`: URL for the item's image.
+    - `item_type` (default: "regular"): "regular" or "combo". (Combo items might require more complex handling not fully detailed here).
+    - `variation_name`: Name of a variation (e.g., "Small", "Large").
+    - `variation_price`: Price for this specific variation.
+    - `variation_cost_price`: Cost price for the variation.
+    - `variation_available` (default: True): "True" or "False" for variation availability.
+
+    The system processes items and their variations. If multiple rows share the same `category_name` and `item_name`,
+    subsequent rows with `variation_name` will be treated as variations of that item.
+    """
+    await verify_restaurant_admin(db, restaurant_id, current_user)
+
+    content_type = file.content_type
+    contents = await file.read()
+
+    df = None
+    try:
+        if "csv" in content_type or file.filename.endswith('.csv'):
+            df = pd.read_csv(io.BytesIO(contents))
+        elif "excel" in content_type or "spreadsheetml" in content_type or file.filename.endswith(('.xls', '.xlsx')):
+            df = pd.read_excel(io.BytesIO(contents))
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported file type. Please upload a CSV or Excel file.")
+    except Exception as e:
+        logger.error(f"Error parsing uploaded file: {e}", exc_info=True)
+        raise HTTPException(status_code=400, detail=f"Error parsing file: {str(e)}")
+
+    if df is None or df.empty:
+        raise HTTPException(status_code=400, detail="File is empty or could not be parsed.")
+
+    # Normalize column names (e.g., lower case, replace spaces with underscores)
+    df.columns = [col.lower().replace(' ', '_') for col in df.columns]
+
+    required_columns = ['category_name', 'item_name', 'item_price', 'inventory_available']
+    for col in required_columns:
+        if col not in df.columns:
+            raise HTTPException(status_code=400, detail=f"Missing required column: {col}")
+
+    created_count = 0
+    error_count = 0
+    errors = []
+    
+    # Group by base item (category_name, item_name) to process item and its variations together
+    # This assumes variations for an item immediately follow its base item row or other variations of the same item.
+    # A more robust grouping might be needed if the file isn't sorted this way.
+    
+    current_item_data = None
+    processed_items = [] # To store schemas.MenuItemCreate objects
+
+    for index, row in df.iterrows():
+        try:
+            # --- Category Handling --- (Simplified: Assumes get_or_create logic)
+            category_name = row['category_name']
+            category_db = db.query(models.MenuCategory).filter(
+                models.MenuCategory.restaurant_id == restaurant_id,
+                models.MenuCategory.name == category_name
+            ).first()
+            if not category_db:
+                # Option: Auto-create category or add to errors
+                category_schema = schemas.MenuCategoryCreate(name=category_name)
+                category_db = crud.create_menu_category(db, restaurant_id, category_schema)
+                # logger.info(f"Created new category '{category_name}' for restaurant {restaurant_id}")
+            category_id = category_db.id
+
+            item_name = row['item_name']
+
+            # --- Logic to group item with its variations ---
+            # If this row starts a new item (different name or category)
+            if not current_item_data or \
+               current_item_data['name'] != item_name or \
+               current_item_data['category_id'] != category_id:
+                
+                # If there was a previous item, add it to the list to be created
+                if current_item_data:
+                    processed_items.append(schemas.MenuItemCreate(**current_item_data))
+                
+                # Start new item
+                current_item_data = {
+                    "restaurant_id": restaurant_id,
+                    "name": item_name,
+                    "description": row.get('item_description'),
+                    "price": float(row['item_price']), 
+                    "cost_price": float(row.get('item_cost_price')) if pd.notna(row.get('item_cost_price')) else None,
+                    "available": str(row.get('item_available', True)).lower() == 'true',
+                    "category_id": category_id,
+                    "image_url": row.get('item_image_url'),
+                    "item_type": row.get('item_type', 'regular').lower(),
+                    "inventory_available": str(row['inventory_available']).lower() == 'true',
+                    "inventory_quantity": None,
+                    "variations": []
+                }
+                
+                # Process inventory_quantity based on inventory_available
+                if current_item_data["inventory_available"]:
+                    if 'inventory_quantity' not in row or pd.isna(row['inventory_quantity']):
+                        raise ValueError(f"inventory_quantity is required for item '{item_name}' when inventory_available is True.")
+                    current_item_data["inventory_quantity"] = float(row['inventory_quantity'])
+                elif 'inventory_quantity' in row and pd.notna(row['inventory_quantity']):
+                    # If inventory_available is False, but quantity is provided, it will be set to None by Pydantic validator.
+                    # We can also explicitly set it to None here or let validator handle it.
+                    # For clarity, explicitly showing it's considered.
+                    current_item_data["inventory_quantity"] = float(row['inventory_quantity']) # Pydantic will nullify if not available
+
+            # --- Variation Handling ---
+            if pd.notna(row.get('variation_name')) and pd.notna(row.get('variation_price')):
+                variation_data = schemas.MenuItemVariationSchema(
+                    name=row['variation_name'],
+                    price=float(row['variation_price']), 
+                    cost_price=float(row.get('variation_cost_price')) if pd.notna(row.get('variation_cost_price')) else None,
+                    available=str(row.get('variation_available', True)).lower() == 'true'
+                )
+                if current_item_data: # Should always be true if logic is correct
+                    current_item_data["variations"].append(variation_data)
+            elif not current_item_data["variations"]: # If no variations yet and this row is not adding one, ensure base price if variation_price was empty
+                 # This case is if the first row for an item didn't have variation_name/price, so item_price is base.
+                 # If item_price was left blank expecting variation_price, this might need adjustment.
+                 # For simplicity, current logic assumes first row for an item defines its base price via 'item_price'.
+                pass # Base item details already captured
+
+        except Exception as e:
+            error_count += 1
+            errors.append(f"Row {index + 2}: Error processing - {str(e)}") # +2 for header and 0-indexing
+            if current_item_data: # If an error occurs, discard current partially processed item
+                current_item_data = None 
+            continue # Skip to next row on error for this item
+            
+    # Add the last processed item
+    if current_item_data:
+        processed_items.append(schemas.MenuItemCreate(**current_item_data))
+
+    # --- Database Creation Step ---
+    # Wrap the database operations in a transaction
+    try:
+        for item_to_create_schema in processed_items:
+            # Complex validation for item_type='combo' and components would go here
+            # For now, assuming item_type regular or variations handle this correctly
+            if item_to_create_schema.item_type == 'combo' and not item_to_create_schema.components:
+                 # If combo, and your file format needs to specify components, this logic needs enhancement.
+                 # The current file format example focuses on variations, not combo components.
+                 logger.warning(f"Item {item_to_create_schema.name} is combo but no components specified in bulk format used.")
+
+            # Use the new CRUD function that adds to session without committing
+            crud.add_menu_item_to_session(db, restaurant_id, item_to_create_schema)
+            created_count += 1 # Increment optimistic count, actual commit determines success
+        
+        if created_count > 0: # Only commit if items were processed and added to session
+            db.commit() # Commit all items at once
+            logger.info(f"Successfully committed {created_count} menu items from bulk upload for restaurant {restaurant_id}.")
+        else:
+            # No items processed to commit, perhaps all rows had errors before DB stage or file was effectively empty of valid items.
+            logger.info(f"No valid menu items processed from bulk upload for restaurant {restaurant_id} to commit.")
+            # If errors list is empty, it means no data rows were processed successfully to reach this stage.
+            if not errors: # and created_count == 0 (implicitly)
+                 errors.append("No valid data rows found in the file to create menu items.")
+                 error_count = len(errors) # Update error count if this specific error is added
+
+    except Exception as e:
+        db.rollback() # Rollback any changes if an error occurs during add_to_session or commit
+        error_count = len(processed_items) if created_count == 0 else error_count # If commit fails, all are errors
+        created_count = 0 # Reset created count as nothing was committed
+        specific_error_msg = f"Database transaction failed during bulk menu item creation: {str(e)}"
+        logger.error(f"{specific_error_msg} for restaurant {restaurant_id}", exc_info=True)
+        errors.append(specific_error_msg) # Add the transaction error to the list of errors
+        # It's possible some row-specific errors were already added, this adds the overall transaction error.
+
+    if errors:
+        final_status = "error"
+        # Determine if it was a partial success at parsing stage but full DB failure, or error from the start.
+        if created_count > 0: # This should not happen if rollback occurred, but as a safeguard for messaging
+            final_status = "partial_success" # This state is less likely with atomic DB operations
+        
+        message = f"Bulk menu items processed. Created: {created_count}, Errors: {len(errors)}."
+        if created_count == 0 and len(processed_items) > 0 and any("Database transaction failed" in err for err in errors):
+            message = f"Bulk menu item creation failed. Attempted to process {len(processed_items)} items, but a database error occurred. All changes rolled back."
+        elif created_count == 0 and not errors:
+             message = "No menu items were created. The file might be empty or data improperly formatted."
+
+        return schemas.StandardResponse(
+            status=final_status,
+            message=message,
+            data={"errors": errors}
+        )
+
+    return schemas.StandardResponse(
+        status="success", 
+        message=f"Successfully created {created_count} menu items from bulk upload."
+    )
 
 # --- ORDERS ---
 
@@ -271,8 +484,8 @@ async def place_order(order: schemas.OrderCreate, db: Session = Depends(get_db),
             if not order.items:
                  raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No items provided to add to existing order.")
             
-            logging.info(f"Existing order {existing_unpaid_order_model.id} found for table {order.table_number}. Current items: {len(existing_unpaid_order_model.items)}, total: {existing_unpaid_order_model.total_cost}")
-            logging.info(f"Attempting to add {len(order.items)} item entries.")
+            logger.info(f"Existing order {existing_unpaid_order_model.id} found for table {order.table_number}. Current items: {len(existing_unpaid_order_model.items)}, total: {existing_unpaid_order_model.total_cost}")
+            logger.info(f"Attempting to add {len(order.items)} item entries.")
 
             # Call the modified crud function which returns the order and list of affected items
             updated_order_model, affected_item_models = crud.add_items_to_order(
@@ -287,7 +500,7 @@ async def place_order(order: schemas.OrderCreate, db: Session = Depends(get_db),
             affected_items_schema = [schemas.OrderItemOut.from_orm(item) for item in affected_item_models]
             
             await notify_admins_items_added_to_order(order_obj.id, affected_items_schema)
-            logging.info(f"Items added to order {order_obj.id}. {len(affected_items_schema)} items affected/added. New total items: {len(order_obj.items)}, new total cost: {order_obj.total_cost}")
+            logger.info(f"Items added to order {order_obj.id}. {len(affected_items_schema)} items affected/added. New total items: {len(order_obj.items)}, new total cost: {order_obj.total_cost}")
 
         else:
             # No existing unpaid order, or table/restaurant not specified for check: create a new one
@@ -298,19 +511,19 @@ async def place_order(order: schemas.OrderCreate, db: Session = Depends(get_db),
                 user_role=current_user.role
             )
             await notify_admins_new_order(order_obj.id) # Existing notification for brand new order
-            logging.info(f"New order {order_obj.id} created for table {order.table_number if order.table_number else 'N/A'}.")
+            logger.info(f"New order {order_obj.id} created for table {order.table_number if order.table_number else 'N/A'}.")
 
     except ValueError as ve:
-        logging.error(f"Validation error placing order: {ve}")
+        logger.error(f"Validation error placing order: {ve}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Error creating/updating order or notifying admins: {e}", exc_info=True)
+        logger.error(f"Error creating/updating order or notifying admins: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to place or update order: {str(e)}")
     
     if not order_obj:
-        logging.error("Order object was not created or updated successfully after all processing, returning 500.")
+        logger.error("Order object was not created or updated successfully after all processing, returning 500.")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to process order.")
 
     # Re-fetch the order_obj with all necessary relationships for OrderOut
@@ -323,7 +536,7 @@ async def place_order(order: schemas.OrderCreate, db: Session = Depends(get_db),
 
     if not db_order_for_response:
         # This should ideally not happen if order_obj was valid
-        logging.error(f"Failed to re-fetch order {order_obj.id} for response construction.")
+        logger.error(f"Failed to re-fetch order {order_obj.id} for response construction.")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error preparing order response.")
 
     # Convert the final order model (whether new or updated) to the OrderOut schema for the response

@@ -1,0 +1,8 @@
+2025-05-16 18:31:59,576 - app.utils.bhashsms_automation - INFO - === Starting new BhashSMS session ===
+2025-05-16 18:31:59,760 - app.main - INFO - Starting Loyalty Backend API in development mode (version: 1.0.0)
+2025-05-16 18:31:59,760 - app.main - INFO - Creating database tables if they don't exist - SKIPPED (handled by Alembic)
+2025-05-16 18:31:59,760 - app.main - INFO - Database connection established (models imported, create_all skipped)
+2025-05-16 18:32:10,787 - app.api.endpoints.coupons - INFO - User 2374f2ab-ecd1-4935-98e5-3eb0a1fc2f45 attempting to create coupons with data: {'name': 'Happy Sikkim', 'coupon_type': <CouponType.FIXED_AMOUNT: 'fixed_amount'>, 'discount_value': 100.0, 'discount_percentage': 0.0, 'menu_item_id': 0, 'menu_category_id': 0, 'category_offer_type': <CategoryOfferType.FIXED_AMOUNT: 'fixed_amount'>, 'start_date': datetime.datetime(2025, 5, 16, 12, 53, 44, 777000, tzinfo=TzInfo(UTC)), 'end_date': datetime.datetime(2025, 5, 16, 12, 53, 44, 777000, tzinfo=TzInfo(UTC)), 'usage_limit': 0, 'per_user_limit': 0, 'assigned_user_ids': ['string'], 'total_coupons_to_generate': 1, 'description': 'string', 'restaurant_id': 'the-grand-eatery'}
+2025-05-16 18:34:18,456 - app.main - INFO - Shutting down Loyalty Backend API
+2025-05-16 18:34:18,456 - app.utils.bhashsms_automation - INFO - Initializing BhashSMS automation
+2025-05-16 18:34:20,557 - app.utils.bhashsms_automation - INFO - Chrome WebDriver initialized successfully

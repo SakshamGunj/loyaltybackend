@@ -166,6 +166,8 @@ class MenuItem(Base):
     image_url = Column(String, nullable=True)
     variations = Column(JSON, nullable=True) # ADDED: e.g., [{"name": "Small", "price": 5.00, "cost_price": 2.00, "available": true}]
     item_type = Column(String(50), default="REGULAR", nullable=False, server_default="REGULAR", index=True) # NEW: REGULAR, COMBO
+    inventory_available = Column(Boolean, default=True, nullable=False)  # New field
+    inventory_quantity = Column(Float, nullable=True)  # New field
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     
     category = relationship("MenuCategory", back_populates="items")

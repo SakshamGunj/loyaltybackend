@@ -1,0 +1,75 @@
+2025-05-16 10:46:00,533 - app.utils.bhashsms_automation - INFO - === Starting new BhashSMS session ===
+2025-05-16 10:46:00,713 - app.main - INFO - Starting Loyalty Backend API in development mode (version: 1.0.0)
+2025-05-16 10:46:00,713 - app.main - INFO - Creating database tables if they don't exist
+2025-05-16 10:46:00,745 - app.main - INFO - Database tables created successfully
+2025-05-16 10:46:00,745 - app.main - INFO - Database connection established
+2025-05-16 10:46:12,187 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-05-16 10:46:58,015 - root - ERROR - Error creating/updating order or notifying admins: (sqlite3.OperationalError) no such column: restaurants.points_per_spin
+[SQL: SELECT restaurants.restaurant_id AS restaurants_restaurant_id, restaurants.restaurant_name AS restaurants_restaurant_name, restaurants.offers AS restaurants_offers, restaurants.points_per_rupee AS restaurants_points_per_rupee, restaurants.points_per_spin AS restaurants_points_per_spin, restaurants.reward_thresholds AS restaurants_reward_thresholds, restaurants.spend_thresholds AS restaurants_spend_thresholds, restaurants.referral_rewards AS restaurants_referral_rewards, restaurants.owner_uid AS restaurants_owner_uid, restaurants.admin_uid AS restaurants_admin_uid, restaurants.created_at AS restaurants_created_at 
+FROM restaurants 
+WHERE restaurants.restaurant_id = ?
+ LIMIT ? OFFSET ?]
+[parameters: ('baba', 1, 0)]
+(Background on this error at: https://sqlalche.me/e/14/e3q8)
+Traceback (most recent call last):
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\base.py", line 1771, in _execute_context
+    self.dialect.do_execute(
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\default.py", line 717, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: restaurants.points_per_spin
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\gunj0\CascadeProjects\loyalty_backend\app\api\endpoints\ordering.py", line 278, in place_order
+    order_obj = crud.create_order(
+                ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\CascadeProjects\loyalty_backend\app\crud.py", line 268, in create_order
+    restaurant = db.query(models.Restaurant).filter(models.Restaurant.restaurant_id == restaurant_id).first()
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\orm\query.py", line 2762, in first
+    return self.limit(1)._iter().first()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\orm\query.py", line 2846, in _iter
+    result = self.session.execute(
+             ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\orm\session.py", line 1689, in execute
+    result = conn._execute_20(statement, params or {}, execution_options)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\base.py", line 1583, in _execute_20
+    return meth(self, args_10style, kwargs_10style, execution_options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\sql\elements.py", line 323, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\base.py", line 1452, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\base.py", line 1814, in _execute_context
+    self._handle_dbapi_exception(
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\base.py", line 1995, in _handle_dbapi_exception
+    util.raise_(
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\util\compat.py", line 207, in raise_
+    raise exception
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\base.py", line 1771, in _execute_context
+    self.dialect.do_execute(
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\default.py", line 717, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: restaurants.points_per_spin
+[SQL: SELECT restaurants.restaurant_id AS restaurants_restaurant_id, restaurants.restaurant_name AS restaurants_restaurant_name, restaurants.offers AS restaurants_offers, restaurants.points_per_rupee AS restaurants_points_per_rupee, restaurants.points_per_spin AS restaurants_points_per_spin, restaurants.reward_thresholds AS restaurants_reward_thresholds, restaurants.spend_thresholds AS restaurants_spend_thresholds, restaurants.referral_rewards AS restaurants_referral_rewards, restaurants.owner_uid AS restaurants_owner_uid, restaurants.admin_uid AS restaurants_admin_uid, restaurants.created_at AS restaurants_created_at 
+FROM restaurants 
+WHERE restaurants.restaurant_id = ?
+ LIMIT ? OFFSET ?]
+[parameters: ('baba', 1, 0)]
+(Background on this error at: https://sqlalche.me/e/14/e3q8)
+2025-05-16 10:48:08,782 - app.main - INFO - Shutting down Loyalty Backend API
+2025-05-16 10:48:08,782 - app.utils.bhashsms_automation - INFO - Initializing BhashSMS automation
+2025-05-16 10:48:11,532 - app.utils.bhashsms_automation - ERROR - Failed to initialize Chrome WebDriver: Message: Service C:\Users\gunj0\.cache\selenium\chromedriver\win64\136.0.7103.94\chromedriver.exe unexpectedly exited. Status code was: 3221225786
+
+2025-05-16 10:48:11,532 - app.main - ERROR - Error during shutdown: Message: Service C:\Users\gunj0\.cache\selenium\chromedriver\win64\136.0.7103.94\chromedriver.exe unexpectedly exited. Status code was: 3221225786
+

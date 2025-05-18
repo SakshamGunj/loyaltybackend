@@ -8,8 +8,8 @@ from .utils.timezone import ist_now, utc_to_ist
 from .auth.custom_auth import get_password_hash
 import logging
 import uuid
-import re
 from .crud_inventory import deduct_inventory_for_sale
+from app.utils.text_utils import slugify
 
 logger = logging.getLogger(__name__)
 
@@ -64,14 +64,6 @@ def delete_user(db: Session, uid: str) -> bool:
     db.commit()
     return True
 
-import re
-
-def slugify(text: str) -> str:
-    # A simple slugify function, can be enhanced
-    text = text.lower()
-    text = re.sub(r'[^a-z0-9]+', '-', text).strip('-')
-    return text
-
 def create_restaurant(db: Session, restaurant: schemas.RestaurantCreate, owner_uid: str):
     # Generate a unique restaurant_id (slug) from name
     base_slug = slugify(restaurant.restaurant_name)
@@ -79,16 +71,15 @@ def create_restaurant(db: Session, restaurant: schemas.RestaurantCreate, owner_u
     suffix = 1
     # Check if slug already exists
     while db.query(models.Restaurant).filter(models.Restaurant.restaurant_id == slug).first():
-        slug = f"{base_slug}-{suffix}" # Use hyphen for better readability
+        slug = f"{base_slug}-{suffix}"
         suffix += 1
     
     # Get all data from the Pydantic schema, including new fields with their defaults
-    # owner_uid is now passed explicitly to the function, not taken from schema directly for creation.
-    data = restaurant.dict(exclude_unset=True) # exclude_unset=True is good for updates, for create we want all fields including defaults from schema
+    data = restaurant.dict(exclude_unset=True)
     
     # Ensure restaurant_id (slug) and owner_uid are set correctly
     data["restaurant_id"] = slug
-    data["owner_uid"] = owner_uid # Set owner_uid from the authenticated user creating it
+    data["owner_uid"] = owner_uid
     
     # created_at is handled by the model's default
     # admin_uid can also be set here if the owner is also the initial admin

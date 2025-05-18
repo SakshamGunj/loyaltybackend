@@ -1,0 +1,8 @@
+2025-05-16 18:41:04,116 - app.utils.bhashsms_automation - INFO - === Starting new BhashSMS session ===
+2025-05-16 18:41:04,267 - app.main - INFO - Starting Loyalty Backend API in development mode (version: 1.0.0)
+2025-05-16 18:41:04,271 - app.main - INFO - Creating database tables if they don't exist - SKIPPED (handled by Alembic)
+2025-05-16 18:41:04,271 - app.main - INFO - Database connection established (models imported, create_all skipped)
+2025-05-16 18:41:16,962 - app.api.endpoints.coupons - INFO - User 2374f2ab-ecd1-4935-98e5-3eb0a1fc2f45 attempting to validate/apply coupon: C4FD0C84B for restaurant the-grand-eatery, request user_uid: None
+2025-05-16 18:45:28,636 - app.main - INFO - Shutting down Loyalty Backend API
+2025-05-16 18:45:28,637 - app.utils.bhashsms_automation - INFO - Initializing BhashSMS automation
+2025-05-16 18:45:30,566 - app.utils.bhashsms_automation - INFO - Chrome WebDriver initialized successfully

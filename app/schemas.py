@@ -231,7 +231,26 @@ class MenuItemBase(BaseModel):
     category_id: int
     image_url: Optional[str] = None 
     variations: Optional[List[MenuItemVariationSchema]] = None 
-    item_type: ItemType = ItemType.REGULAR # NEWLY ADDED
+    item_type: ItemType = ItemType.REGULAR
+    inventory_available: bool = True  # New field
+    inventory_quantity: Optional[float] = None  # New field
+
+    @validator('item_type', pre=True, always=True)
+    def ensure_item_type_lowercase(cls, v):
+        if isinstance(v, str):
+            return v.lower()
+        return v
+
+    @validator('inventory_quantity', always=True)
+    def quantity_if_tracking_disabled(cls, v, values):
+        inventory_available = values.get('inventory_available')
+        if inventory_available is False and v is not None:
+            # If inventory tracking is off, quantity should ideally be None or 0.
+            # Forcing to None if a value is provided when not tracking.
+            return None 
+        if inventory_available is True and v is not None and v < 0:
+            raise ValueError('Inventory quantity cannot be negative when tracking is enabled.')
+        return v
 
 class MenuItemCreate(MenuItemBase):
     # If item_type is COMBO, components must be provided by the client.
@@ -595,6 +614,7 @@ class RestaurantTableUpdate(BaseModel):
 class RestaurantTableOut(RestaurantTableBase):
     id: int
     restaurant_id: str
+    composed_table_id: Optional[str] = None # New field for slug-id
 
     class Config:
         from_attributes = True

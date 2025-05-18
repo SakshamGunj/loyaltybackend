@@ -18,7 +18,7 @@ from .general import (
     update_payment,
     apply_promo_code, create_promo_code, get_all_promo_codes, update_promo_code, delete_promo_code,
     get_order_analytics, export_orders_csv,
-    get_unpaid_order_by_table, add_items_to_order
+    get_unpaid_order_by_table, add_items_to_order, add_menu_item_to_session
 )
 
 # Import from inventory-specific CRUD functions
@@ -50,6 +50,7 @@ from .crud_tables import (
     create_restaurant_table,
     get_table,
     get_table_by_number,
+    get_table_by_composed_id,
     list_tables_by_restaurant,
     update_table_details,
     delete_restaurant_table
@@ -81,7 +82,7 @@ __all__ = [
     "update_payment",
     "apply_promo_code", "create_promo_code", "get_all_promo_codes", "update_promo_code", "delete_promo_code",
     "get_order_analytics", "export_orders_csv",
-    "get_unpaid_order_by_table", "add_items_to_order",
+    "get_unpaid_order_by_table", "add_items_to_order", "add_menu_item_to_session",
 
     # Functions from .crud_inventory
     "get_inventory_item", "get_inventory_item_by_menu_id", "create_inventory_item",
@@ -102,6 +103,7 @@ __all__ = [
     "create_restaurant_table",
     "get_table",
     "get_table_by_number",
+    "get_table_by_composed_id",
     "list_tables_by_restaurant",
     "update_table_details",
     "delete_restaurant_table",

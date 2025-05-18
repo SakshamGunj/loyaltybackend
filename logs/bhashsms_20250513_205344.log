@@ -1,0 +1,8 @@
+2025-05-13 20:53:44,278 - app.utils.bhashsms_automation - INFO - === Starting new BhashSMS session ===
+2025-05-13 20:53:44,424 - asyncio - ERROR - Task was destroyed but it is pending!
+task: <Task pending name='Task-1' coro=<Server.serve() done, defined at C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\uvicorn\server.py:68> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+2025-05-13 20:53:44,455 - asyncio - ERROR - Task was destroyed but it is pending!
+task: <Task pending name='Task-3' coro=<LifespanOn.main() running at C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\uvicorn\lifespan\on.py:86> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+2025-05-13 20:53:44,458 - app.utils.bhashsms_automation - INFO - Initializing BhashSMS automation
+2025-05-13 20:53:44,461 - app.utils.bhashsms_automation - ERROR - Failed to initialize Chrome WebDriver: Message: Unable to obtain driver for chrome; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors/driver_location
+

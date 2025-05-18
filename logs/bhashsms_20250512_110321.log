@@ -1,0 +1,11 @@
+2025-05-12 11:03:21,893 - app.utils.bhashsms_automation - INFO - === Starting new BhashSMS session ===
+2025-05-12 11:04:38,564 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-05-12 11:04:56,000 - rewards - INFO - User 68784cbc-233a-488a-9bd6-cce9b222f1c0 redemptions for restaurant baba today: 1
+2025-05-12 11:04:56,006 - rewards - WARNING - User 68784cbc-233a-488a-9bd6-cce9b222f1c0 exceeded daily redemption limit for restaurant baba
+2025-05-12 11:05:59,589 - app.utils.bhashsms_automation - INFO - Initializing BhashSMS automation
+2025-05-12 11:06:01,135 - app.utils.bhashsms_automation - INFO - Chrome WebDriver initialized successfully

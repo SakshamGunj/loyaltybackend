@@ -1,0 +1,4 @@
+2025-05-12 10:52:31,726 - app.utils.bhashsms_automation - INFO - === Starting new BhashSMS session ===
+2025-05-12 10:53:22,306 - rewards - INFO - User 68784cbc-233a-488a-9bd6-cce9b222f1c0 claims for restaurant baba today: 2
+2025-05-12 10:55:40,094 - app.utils.bhashsms_automation - INFO - Initializing BhashSMS automation
+2025-05-12 10:55:41,624 - app.utils.bhashsms_automation - INFO - Chrome WebDriver initialized successfully

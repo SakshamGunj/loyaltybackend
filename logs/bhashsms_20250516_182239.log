@@ -1,0 +1,15 @@
+2025-05-16 18:22:39,367 - app.utils.bhashsms_automation - INFO - === Starting new BhashSMS session ===
+2025-05-16 18:22:39,552 - app.main - INFO - Starting Loyalty Backend API in development mode (version: 1.0.0)
+2025-05-16 18:22:39,552 - app.main - INFO - Creating database tables if they don't exist - SKIPPED (handled by Alembic)
+2025-05-16 18:22:39,552 - app.main - INFO - Database connection established (models imported, create_all skipped)
+2025-05-16 18:24:17,573 - app.api.endpoints.coupons - INFO - User 2374f2ab-ecd1-4935-98e5-3eb0a1fc2f45 attempting to create coupons with data: {'name': 'Happy Sikkim', 'coupon_type': <CouponType.FIXED_AMOUNT: 'fixed_amount'>, 'discount_value': 100.0, 'discount_percentage': 0.0, 'menu_item_id': 0, 'menu_category_id': 0, 'category_offer_type': <CategoryOfferType.FIXED_AMOUNT: 'fixed_amount'>, 'start_date': datetime.datetime(2025, 5, 16, 12, 53, 44, 777000, tzinfo=TzInfo(UTC)), 'end_date': datetime.datetime(2025, 5, 16, 12, 53, 44, 777000, tzinfo=TzInfo(UTC)), 'usage_limit': 0, 'per_user_limit': 0, 'assigned_user_ids': ['string'], 'total_coupons_to_generate': 1, 'description': 'string', 'restaurant_id': 'string'}
+2025-05-16 18:26:20,214 - app.api.endpoints.coupons - INFO - User 2374f2ab-ecd1-4935-98e5-3eb0a1fc2f45 attempting to create coupons with data: {'name': 'Happy Sikkim', 'coupon_type': <CouponType.FIXED_AMOUNT: 'fixed_amount'>, 'discount_value': 100.0, 'discount_percentage': 0.0, 'menu_item_id': 0, 'menu_category_id': 0, 'category_offer_type': <CategoryOfferType.FIXED_AMOUNT: 'fixed_amount'>, 'start_date': datetime.datetime(2025, 5, 16, 12, 53, 44, 777000, tzinfo=TzInfo(UTC)), 'end_date': datetime.datetime(2025, 5, 16, 12, 53, 44, 777000, tzinfo=TzInfo(UTC)), 'usage_limit': 0, 'per_user_limit': 0, 'assigned_user_ids': ['string'], 'total_coupons_to_generate': 1, 'description': 'string', 'restaurant_id': 'the-grand-eatery'}
+2025-05-16 18:26:20,222 - app.api.endpoints.coupons - ERROR - Error generating coupon code instance: module 'app.crud' has no attribute 'generate_unique_coupon_code'
+Traceback (most recent call last):
+  File "C:\Users\gunj0\CascadeProjects\loyalty_backend\app\api\endpoints\coupons.py", line 122, in create_coupons_endpoint
+    unique_code = crud.generate_unique_coupon_code(db, length=8, prefix="C")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'app.crud' has no attribute 'generate_unique_coupon_code'. Did you mean: 'generate_coupon_code'?
+2025-05-16 18:27:37,273 - app.main - INFO - Shutting down Loyalty Backend API
+2025-05-16 18:27:37,273 - app.utils.bhashsms_automation - INFO - Initializing BhashSMS automation
+2025-05-16 18:27:39,324 - app.utils.bhashsms_automation - INFO - Chrome WebDriver initialized successfully

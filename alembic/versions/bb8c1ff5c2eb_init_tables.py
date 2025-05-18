@@ -23,7 +23,7 @@ def upgrade():
         uid VARCHAR NOT NULL, 
         name VARCHAR, 
         email VARCHAR, 
-        created_at DATETIME, 
+        created_at TIMESTAMP, 
         PRIMARY KEY (uid)
     )
     """)
@@ -40,7 +40,7 @@ def upgrade():
         reward_thresholds JSON, 
         referral_rewards JSON, 
         owner_uid VARCHAR, 
-        created_at DATETIME, 
+        created_at TIMESTAMP, 
         PRIMARY KEY (restaurant_id), 
         FOREIGN KEY(owner_uid) REFERENCES users (uid)
     )

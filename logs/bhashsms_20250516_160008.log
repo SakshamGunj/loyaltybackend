@@ -1,0 +1,21 @@
+2025-05-16 16:00:08,295 - app.utils.bhashsms_automation - INFO - === Starting new BhashSMS session ===
+2025-05-16 16:00:08,472 - app.main - INFO - Starting Loyalty Backend API in development mode (version: 1.0.0)
+2025-05-16 16:00:08,476 - app.main - INFO - Creating database tables if they don't exist - SKIPPED (handled by Alembic)
+2025-05-16 16:00:08,476 - app.main - INFO - Database connection established (models imported, create_all skipped)
+2025-05-16 16:00:15,563 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-05-16 16:00:15,905 - root - ERROR - Unexpected error creating employee: You must set the config attribute `from_attributes=True` to use from_orm
+Traceback (most recent call last):
+  File "C:\Users\gunj0\CascadeProjects\loyalty_backend\app\api\endpoints\employees.py", line 90, in create_employee_for_restaurant
+    return schemas.EmployeeOut.from_orm(created_user_model)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic\main.py", line 1440, in from_orm
+    raise PydanticUserError(
+pydantic.errors.PydanticUserError: You must set the config attribute `from_attributes=True` to use from_orm
+2025-05-16 16:01:17,182 - app.main - INFO - Shutting down Loyalty Backend API
+2025-05-16 16:01:17,182 - app.utils.bhashsms_automation - INFO - Initializing BhashSMS automation
+2025-05-16 16:01:19,077 - app.utils.bhashsms_automation - INFO - Chrome WebDriver initialized successfully

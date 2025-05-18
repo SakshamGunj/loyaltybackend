@@ -1,17 +1,1 @@
-﻿# Exclude local development and git files
-.git/
-.github/
-.gitignore
-__pycache__/
-*.py[cod]
-*.class
-*.so
-.env
-.venv/
-venv/
-ENV/
-env/
-.idea/
-.vscode/
-*.swp
-*.bak
+﻿

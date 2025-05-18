@@ -1,0 +1,19 @@
+2025-05-16 17:00:19,390 - app.utils.bhashsms_automation - INFO - === Starting new BhashSMS session ===
+2025-05-16 17:00:19,909 - app.main - INFO - Starting Loyalty Backend API in development mode (version: 1.0.0)
+2025-05-16 17:00:19,910 - app.main - INFO - Creating database tables if they don't exist - SKIPPED (handled by Alembic)
+2025-05-16 17:00:19,910 - app.main - INFO - Database connection established (models imported, create_all skipped)
+2025-05-16 18:08:29,288 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-05-16 18:12:18,574 - root - INFO - Existing order the-grand-eatery_3 found for table 6. Current items: 1, total: 2000.0
+2025-05-16 18:12:18,575 - root - INFO - Attempting to add 1 item entries.
+2025-05-16 18:12:18,778 - root - INFO - Items added to order the-grand-eatery_3. 1 items affected/added. New total items: 1, new total cost: 3000.0
+2025-05-16 18:12:34,835 - root - INFO - Existing order the-grand-eatery_3 found for table 6. Current items: 1, total: 3000.0
+2025-05-16 18:12:34,835 - root - INFO - Attempting to add 1 item entries.
+2025-05-16 18:12:34,853 - root - INFO - Items added to order the-grand-eatery_3. 1 items affected/added. New total items: 1, new total cost: 4100.0
+2025-05-16 18:16:39,039 - app.main - INFO - Shutting down Loyalty Backend API
+2025-05-16 18:16:39,039 - app.utils.bhashsms_automation - INFO - Initializing BhashSMS automation
+2025-05-16 18:16:44,375 - app.utils.bhashsms_automation - INFO - Chrome WebDriver initialized successfully

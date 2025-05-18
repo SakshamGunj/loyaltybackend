@@ -77,44 +77,44 @@ async def list_restaurant_tables(
 @router.get("/{table_id}", response_model=schemas.RestaurantTableOut)
 async def get_specific_table_details(
     restaurant_id: str,
-    table_id: int,
+    table_id: str,
     db: Session = Depends(get_db),
     current_user: TokenData = Depends(get_current_user)
 ):
-    await verify_table_management_permission(db, restaurant_id, current_user, "view_tables") # Or a new permission
-    table = crud.get_table(db, table_id=table_id, restaurant_id=restaurant_id)
+    await verify_table_management_permission(db, restaurant_id, current_user, "view_tables")
+    table = crud.get_table_by_composed_id(db, composed_id=table_id, restaurant_id_from_path=restaurant_id)
     if not table:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Table {table_id} not found in restaurant {restaurant_id}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Table '{table_id}' not found in restaurant {restaurant_id}")
     return table
 
 @router.put("/{table_id}", response_model=schemas.RestaurantTableOut)
 async def update_specific_table(
     restaurant_id: str,
-    table_id: int,
+    table_id: str,
     table_update_data: schemas.RestaurantTableUpdate,
     db: Session = Depends(get_db),
     current_user: TokenData = Depends(get_current_user)
 ):
     await verify_table_management_permission(db, restaurant_id, current_user)
     try:
-        updated_table = crud.update_table_details(db, table_id=table_id, restaurant_id=restaurant_id, update_data=table_update_data)
+        updated_table = crud.update_table_details(db, composed_id=table_id, restaurant_id=restaurant_id, update_data=table_update_data)
         if not updated_table:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Table {table_id} not found for update.")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Table '{table_id}' not found for update.")
         return updated_table
-    except ValueError as ve: # For duplicate table numbers
+    except ValueError as ve: 
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
     except Exception as e:
-        logger.error(f"Error updating table {table_id} for restaurant {restaurant_id}: {e}", exc_info=True)
+        logger.error(f"Error updating table '{table_id}' for restaurant {restaurant_id}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not update table.")
 
 @router.delete("/{table_id}", response_model=schemas.StandardResponse)
 async def remove_table_from_restaurant(
     restaurant_id: str,
-    table_id: int,
+    table_id: str,
     db: Session = Depends(get_db),
     current_user: TokenData = Depends(get_current_user)
 ):
     await verify_table_management_permission(db, restaurant_id, current_user)
-    if not crud.delete_restaurant_table(db, table_id=table_id, restaurant_id=restaurant_id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Table {table_id} not found for deletion.")
-    return schemas.StandardResponse(message=f"Table {table_id} deleted successfully from restaurant {restaurant_id}.") 
+    if not crud.delete_restaurant_table(db, composed_id=table_id, restaurant_id=restaurant_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Table '{table_id}' not found for deletion.")
+    return schemas.StandardResponse(message=f"Table '{table_id}' deleted successfully from restaurant {restaurant_id}.") 

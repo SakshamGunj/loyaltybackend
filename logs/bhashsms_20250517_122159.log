@@ -1,0 +1,7 @@
+2025-05-17 12:21:59,091 - app.utils.bhashsms_automation - INFO - === Starting new BhashSMS session ===
+2025-05-17 12:21:59,265 - app.main - INFO - Starting Loyalty Backend API in development mode (version: 1.0.0)
+2025-05-17 12:21:59,265 - app.main - INFO - Creating database tables if they don't exist - SKIPPED (handled by Alembic)
+2025-05-17 12:21:59,266 - app.main - INFO - Database connection established (models imported, create_all skipped)
+2025-05-17 12:22:42,350 - app.main - INFO - Shutting down Loyalty Backend API
+2025-05-17 12:22:42,351 - app.utils.bhashsms_automation - INFO - Initializing BhashSMS automation
+2025-05-17 12:22:44,087 - app.utils.bhashsms_automation - INFO - Chrome WebDriver initialized successfully

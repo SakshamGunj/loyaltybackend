@@ -1,0 +1,174 @@
+2025-05-13 19:29:31,741 - app.utils.bhashsms_automation - INFO - === Starting new BhashSMS session ===
+2025-05-13 19:33:23,022 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-05-13 19:33:58,293 - app.utils.bhashsms_automation - INFO - Initializing BhashSMS automation
+2025-05-13 19:34:02,713 - app.utils.bhashsms_automation - INFO - Chrome WebDriver initialized successfully
+2025-05-13 19:34:02,713 - app.utils.bhashsms_automation - INFO - Navigating to https://www.bhashsms.com/loginlanding.php (Attempt 1/3)
+2025-05-13 19:34:10,473 - app.utils.bhashsms_automation - INFO - Successfully logged in and reached dashboard
+2025-05-13 19:34:10,495 - app.utils.bhashsms_automation - INFO - === Starting WhatsApp Message Send Process ===
+2025-05-13 19:34:10,495 - app.utils.bhashsms_automation - INFO - Input parameters - Phone: 7250504240, Parameters: Aman,saksjam, Template: Hi {{1}},
+Asha from Paddington this side,
+{{2}}.
+2025-05-13 19:34:10,495 - app.utils.bhashsms_automation - INFO - Verifying login using Selenium...
+2025-05-13 19:34:10,495 - app.utils.bhashsms_automation - INFO - Navigating to https://bhashsms.com/loginlanding.php
+2025-05-13 19:34:14,422 - app.utils.bhashsms_automation - INFO - Finding username field...
+2025-05-13 19:34:14,564 - app.utils.bhashsms_automation - INFO - Username filled
+2025-05-13 19:34:14,564 - app.utils.bhashsms_automation - INFO - Finding password field...
+2025-05-13 19:34:14,663 - app.utils.bhashsms_automation - INFO - Password filled
+2025-05-13 19:34:14,663 - app.utils.bhashsms_automation - INFO - Finding login button...
+2025-05-13 19:34:14,734 - app.utils.bhashsms_automation - INFO - Login button clicked - waiting for redirect...
+2025-05-13 19:34:19,748 - app.utils.bhashsms_automation - INFO - Current URL after login: https://bhashsms.com/index.php
+2025-05-13 19:34:19,748 - app.utils.bhashsms_automation - INFO - Successfully logged in and reached dashboard
+2025-05-13 19:34:19,754 - app.utils.bhashsms_automation - INFO - Session created and cookies stored
+2025-05-13 19:34:19,754 - app.utils.bhashsms_automation - INFO - Proceeding with WhatsApp message sending...
+2025-05-13 19:34:19,755 - app.utils.bhashsms_automation - INFO - Cleaning and validating phone number...
+2025-05-13 19:34:19,755 - app.utils.bhashsms_automation - INFO - Cleaned phone number: 7250504240
+2025-05-13 19:34:19,755 - app.utils.bhashsms_automation - INFO - Preparing request payload...
+2025-05-13 19:34:19,755 - app.utils.bhashsms_automation - INFO - Payload prepared: {'parameters': 'Aman,saksjam', 'numbers': '7250504240', 'submitc': 'Send Single WA', 'dtype': 'markee', 'stype': 'text', 'tmessage': 'Hi {{1}},\nAsha from Paddington this side,\n{{2}}.', 'tai': '1', 'cano': '1'}
+2025-05-13 19:34:19,755 - app.utils.bhashsms_automation - INFO - Sending POST request to https://bhashsms.com/pushwa/iframe/singlewa.php
+2025-05-13 19:34:19,755 - app.utils.bhashsms_automation - INFO - Request headers: {'User-Agent': 'python-requests/2.32.3', 'Accept-Encoding': 'gzip, deflate, br', 'Accept': '*/*', 'Connection': 'keep-alive'}
+2025-05-13 19:34:19,757 - app.utils.bhashsms_automation - INFO - Request cookies: {'__utmb': '172239856.4.10.1747145044', 'PHPSESSID': 'ijrdo3f7j0pst6r2ka3b23ob66', '_ga_C9FNJ46BV1': 'GS2.2.s1747145045$o1$g1$t1747145052$j53$l0$h853278039', '_gid': 'GA1.2.1905840186.1747145045', '_fbp': 'fb.1.1747145049049.771869138720630101', '__utmz': '172239856.1747145044.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none)', '_ga': 'GA1.2.134572932.1747145044', '__utmc': '172239856', '__utmt': '1', '_gat': '1', '__utma': '172239856.134572932.1747145044.1747145044.1747145044.1'}
+2025-05-13 19:34:50,349 - app.utils.bhashsms_automation - ERROR - Error in process: HTTPSConnectionPool(host='bhashsms.com', port=443): Read timed out. (read timeout=30)
+Traceback (most recent call last):
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\urllib3\connectionpool.py", line 468, in _make_request
+    six.raise_from(e, None)
+  File "<string>", line 3, in raise_from
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\urllib3\connectionpool.py", line 463, in _make_request
+    httplib_response = conn.getresponse()
+                       ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\http\client.py", line 1428, in getresponse
+    response.begin()
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\http\client.py", line 331, in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\http\client.py", line 292, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\socket.py", line 720, in readinto
+    return self._sock.recv_into(b)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\ssl.py", line 1252, in recv_into
+    return self.read(nbytes, buffer)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\ssl.py", line 1104, in read
+    return self._sslobj.read(len, buffer)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: The read operation timed out
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\requests\adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\urllib3\connectionpool.py", line 802, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\urllib3\util\retry.py", line 552, in increment
+    raise six.reraise(type(error), error, _stacktrace)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\urllib3\packages\six.py", line 770, in reraise
+    raise value
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\urllib3\connectionpool.py", line 716, in urlopen
+    httplib_response = self._make_request(
+                       ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\urllib3\connectionpool.py", line 470, in _make_request
+    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\urllib3\connectionpool.py", line 358, in _raise_timeout
+    raise ReadTimeoutError(
+urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='bhashsms.com', port=443): Read timed out. (read timeout=30)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\gunj0\CascadeProjects\loyalty_backend\app\utils\bhashsms_automation.py", line 263, in send_whatsapp_message
+    response = self.session.post(
+               ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\requests\sessions.py", line 637, in post
+    return self.request("POST", url, data=data, json=json, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\requests\sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\requests\sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\requests\adapters.py", line 713, in send
+    raise ReadTimeout(e, request=request)
+requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='bhashsms.com', port=443): Read timed out. (read timeout=30)
+2025-05-13 19:34:50,626 - app.utils.bhashsms_automation - INFO - === WhatsApp Message Send Process Completed ===
+2025-05-13 19:35:26,275 - app.utils.bhashsms_automation - INFO - === Starting WhatsApp Message Send Process ===
+2025-05-13 19:35:26,275 - app.utils.bhashsms_automation - INFO - Input parameters - Phone: 7250504240, Parameters: Aman,saksjam, Template: Hi {{1}},
+Asha from Paddington this side,
+{{2}}.
+2025-05-13 19:35:26,276 - app.utils.bhashsms_automation - INFO - Verifying login using Selenium...
+2025-05-13 19:35:26,277 - app.utils.bhashsms_automation - INFO - Navigating to https://bhashsms.com/loginlanding.php
+2025-05-13 19:35:58,587 - app.utils.bhashsms_automation - INFO - Finding username field...
+2025-05-13 19:36:18,659 - app.utils.bhashsms_automation - ERROR - Error during Selenium login verification: Message: no such element: Unable to locate element: {"method":"xpath","selector":"/html/body/div[1]/div[1]/div/div[2]/form/input[1]"}
+  (Session info: chrome=135.0.7049.115); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#no-such-element-exception
+Stacktrace:
+	GetHandleVerifier [0x00007FF7E8E0EFA5+77893]
+	GetHandleVerifier [0x00007FF7E8E0F000+77984]
+	(No symbol) [0x00007FF7E8BD91BA]
+	(No symbol) [0x00007FF7E8C2F16D]
+	(No symbol) [0x00007FF7E8C2F41C]
+	(No symbol) [0x00007FF7E8C82237]
+	(No symbol) [0x00007FF7E8C5716F]
+	(No symbol) [0x00007FF7E8C7F07F]
+	(No symbol) [0x00007FF7E8C56F03]
+	(No symbol) [0x00007FF7E8C20328]
+	(No symbol) [0x00007FF7E8C21093]
+	GetHandleVerifier [0x00007FF7E90C7B6D+2931725]
+	GetHandleVerifier [0x00007FF7E90C2132+2908626]
+	GetHandleVerifier [0x00007FF7E90E00F3+3031443]
+	GetHandleVerifier [0x00007FF7E8E291EA+184970]
+	GetHandleVerifier [0x00007FF7E8E3086F+215311]
+	GetHandleVerifier [0x00007FF7E8E16EC4+110436]
+	GetHandleVerifier [0x00007FF7E8E17072+110866]
+	GetHandleVerifier [0x00007FF7E8DFD479+5401]
+	BaseThreadInitThunk [0x00007FFB91D1259D+29]
+	RtlUserThreadStart [0x00007FFB93B2AF38+40]
+Traceback (most recent call last):
+  File "C:\Users\gunj0\CascadeProjects\loyalty_backend\app\utils\bhashsms_automation.py", line 176, in send_whatsapp_message
+    username_field = self.driver.find_element(By.XPATH, "/html/body/div[1]/div[1]/div/div[2]/form/input[1]")
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\selenium\webdriver\remote\webdriver.py", line 917, in find_element
+    return self.execute(Command.FIND_ELEMENT, {"using": by, "value": value})["value"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\selenium\webdriver\remote\webdriver.py", line 448, in execute
+    self.error_handler.check_response(response)
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\selenium\webdriver\remote\errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.NoSuchElementException: Message: no such element: Unable to locate element: {"method":"xpath","selector":"/html/body/div[1]/div[1]/div/div[2]/form/input[1]"}
+  (Session info: chrome=135.0.7049.115); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#no-such-element-exception
+Stacktrace:
+	GetHandleVerifier [0x00007FF7E8E0EFA5+77893]
+	GetHandleVerifier [0x00007FF7E8E0F000+77984]
+	(No symbol) [0x00007FF7E8BD91BA]
+	(No symbol) [0x00007FF7E8C2F16D]
+	(No symbol) [0x00007FF7E8C2F41C]
+	(No symbol) [0x00007FF7E8C82237]
+	(No symbol) [0x00007FF7E8C5716F]
+	(No symbol) [0x00007FF7E8C7F07F]
+	(No symbol) [0x00007FF7E8C56F03]
+	(No symbol) [0x00007FF7E8C20328]
+	(No symbol) [0x00007FF7E8C21093]
+	GetHandleVerifier [0x00007FF7E90C7B6D+2931725]
+	GetHandleVerifier [0x00007FF7E90C2132+2908626]
+	GetHandleVerifier [0x00007FF7E90E00F3+3031443]
+	GetHandleVerifier [0x00007FF7E8E291EA+184970]
+	GetHandleVerifier [0x00007FF7E8E3086F+215311]
+	GetHandleVerifier [0x00007FF7E8E16EC4+110436]
+	GetHandleVerifier [0x00007FF7E8E17072+110866]
+	GetHandleVerifier [0x00007FF7E8DFD479+5401]
+	BaseThreadInitThunk [0x00007FFB91D1259D+29]
+	RtlUserThreadStart [0x00007FFB93B2AF38+40]
+
+2025-05-13 19:36:18,723 - app.utils.bhashsms_automation - INFO - === WhatsApp Message Send Process Completed ===
+2025-05-13 19:51:25,790 - urllib3.connectionpool - WARNING - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000001FDE64E5E80>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /session/f526b26e1e7684f931b2b5ff681fb99a
+2025-05-13 19:51:29,831 - urllib3.connectionpool - WARNING - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000001FDE6A1D7C0>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /session/f526b26e1e7684f931b2b5ff681fb99a
+2025-05-13 19:51:33,864 - urllib3.connectionpool - WARNING - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000001FDE6A1D490>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /session/f526b26e1e7684f931b2b5ff681fb99a

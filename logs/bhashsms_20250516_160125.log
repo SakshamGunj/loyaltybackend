@@ -1,0 +1,71 @@
+2025-05-16 16:01:25,589 - app.utils.bhashsms_automation - INFO - === Starting new BhashSMS session ===
+2025-05-16 16:01:25,832 - app.main - INFO - Starting Loyalty Backend API in development mode (version: 1.0.0)
+2025-05-16 16:01:25,840 - app.main - INFO - Creating database tables if they don't exist - SKIPPED (handled by Alembic)
+2025-05-16 16:01:25,840 - app.main - INFO - Database connection established (models imported, create_all skipped)
+2025-05-16 16:01:54,453 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-05-16 16:36:53,541 - root - ERROR - Error creating/updating order or notifying admins: (sqlite3.OperationalError) no such table: promo_codes
+[SQL: SELECT promo_codes.id AS promo_codes_id, promo_codes.code AS promo_codes_code, promo_codes.discount_percent AS promo_codes_discount_percent, promo_codes.discount_amount AS promo_codes_discount_amount, promo_codes.valid_from AS promo_codes_valid_from, promo_codes.valid_to AS promo_codes_valid_to, promo_codes.usage_limit AS promo_codes_usage_limit, promo_codes.used_count AS promo_codes_used_count, promo_codes.restaurant_id AS promo_codes_restaurant_id, promo_codes.active AS promo_codes_active, promo_codes.created_at AS promo_codes_created_at 
+FROM promo_codes 
+WHERE promo_codes.code = ? AND promo_codes.active = 1
+ LIMIT ? OFFSET ?]
+[parameters: ('string', 1, 0)]
+(Background on this error at: https://sqlalche.me/e/14/e3q8)
+Traceback (most recent call last):
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\base.py", line 1771, in _execute_context
+    self.dialect.do_execute(
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\default.py", line 717, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such table: promo_codes
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\gunj0\CascadeProjects\loyalty_backend\app\api\endpoints\ordering.py", line 288, in place_order
+    order_obj = crud.create_order(
+                ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\CascadeProjects\loyalty_backend\app\crud\general.py", line 301, in create_order
+    ).first()
+      ^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\orm\query.py", line 2762, in first
+    return self.limit(1)._iter().first()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\orm\query.py", line 2846, in _iter
+    result = self.session.execute(
+             ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\orm\session.py", line 1689, in execute
+    result = conn._execute_20(statement, params or {}, execution_options)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\base.py", line 1583, in _execute_20
+    return meth(self, args_10style, kwargs_10style, execution_options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\sql\elements.py", line 323, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\base.py", line 1452, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\base.py", line 1814, in _execute_context
+    self._handle_dbapi_exception(
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\base.py", line 1995, in _handle_dbapi_exception
+    util.raise_(
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\util\compat.py", line 207, in raise_
+    raise exception
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\base.py", line 1771, in _execute_context
+    self.dialect.do_execute(
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\default.py", line 717, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such table: promo_codes
+[SQL: SELECT promo_codes.id AS promo_codes_id, promo_codes.code AS promo_codes_code, promo_codes.discount_percent AS promo_codes_discount_percent, promo_codes.discount_amount AS promo_codes_discount_amount, promo_codes.valid_from AS promo_codes_valid_from, promo_codes.valid_to AS promo_codes_valid_to, promo_codes.usage_limit AS promo_codes_usage_limit, promo_codes.used_count AS promo_codes_used_count, promo_codes.restaurant_id AS promo_codes_restaurant_id, promo_codes.active AS promo_codes_active, promo_codes.created_at AS promo_codes_created_at 
+FROM promo_codes 
+WHERE promo_codes.code = ? AND promo_codes.active = 1
+ LIMIT ? OFFSET ?]
+[parameters: ('string', 1, 0)]
+(Background on this error at: https://sqlalche.me/e/14/e3q8)
+2025-05-16 16:37:54,706 - app.main - INFO - Shutting down Loyalty Backend API
+2025-05-16 16:37:54,714 - app.utils.bhashsms_automation - INFO - Initializing BhashSMS automation
+2025-05-16 16:37:59,635 - app.utils.bhashsms_automation - INFO - Chrome WebDriver initialized successfully

@@ -1,0 +1,15 @@
+2025-05-16 12:33:27,715 - app.utils.bhashsms_automation - INFO - === Starting new BhashSMS session ===
+2025-05-16 12:33:27,850 - app.main - INFO - Starting Loyalty Backend API in development mode (version: 1.0.0)
+2025-05-16 12:33:27,850 - app.main - INFO - Creating database tables if they don't exist
+2025-05-16 12:33:27,855 - app.main - INFO - Database tables created successfully
+2025-05-16 12:33:27,855 - app.main - INFO - Database connection established
+2025-05-16 12:34:33,878 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-05-16 13:08:55,358 - root - INFO - New order baba_1 created for table 4.
+2025-05-16 13:11:39,104 - app.main - INFO - Shutting down Loyalty Backend API
+2025-05-16 13:11:39,104 - app.utils.bhashsms_automation - INFO - Initializing BhashSMS automation
+2025-05-16 13:11:41,308 - app.utils.bhashsms_automation - INFO - Chrome WebDriver initialized successfully

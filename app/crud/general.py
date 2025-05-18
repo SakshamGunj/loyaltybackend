@@ -308,39 +308,38 @@ def create_menu_item(db: Session, restaurant_id: str, item: schemas.MenuItemCrea
     variations_data = [v.dict() for v in item.variations] if item.variations else None
     
     # Exclude 'components' from the main item data dictionary for initial MenuItem creation
+    # The new inventory fields (inventory_available, inventory_quantity) are part of MenuItemCreate schema
+    # and will be included in item_data_dict if present.
     item_data_dict = item.dict(exclude={'restaurant_id', 'variations', 'components'})
     
-    # Ensure item_type from schema is correctly passed to the model
     db_item = models.MenuItem(
-        **item_data_dict, # This now includes item_type
+        **item_data_dict, # This now includes item_type, inventory_available, inventory_quantity
         restaurant_id=restaurant_id,
         variations=variations_data
     )
     
-    db.add(db_item) # Add the main item to session first
+    db.add(db_item)
 
     if item.item_type == schemas.ItemType.COMBO:
-        if not item.components: # Schema validator should have caught this
+        if not item.components:
             db.rollback()
             raise ValueError("Components must be provided for a combo item type.")
         
         try:
-            db.flush() # Flush to get db_item.id for foreign key references in components
+            db.flush() 
 
             component_objects_to_add = []
             for comp_data in item.components:
-                # Verify component item exists, is for the same restaurant, and is a REGULAR item
                 component_menu_item_db = db.query(models.MenuItem).filter(
                     models.MenuItem.id == comp_data.menu_item_id,
                     models.MenuItem.restaurant_id == restaurant_id,
-                    models.MenuItem.item_type == schemas.ItemType.REGULAR.value # components must be regular items
+                    models.MenuItem.item_type == schemas.ItemType.REGULAR.value
                 ).first()
                 
                 if not component_menu_item_db:
-                    db.rollback() # Rollback if any component is invalid
+                    db.rollback()
                     raise ValueError(f"Component item with ID {comp_data.menu_item_id} not found for restaurant {restaurant_id}, is not available, or is not a 'regular' item.")
 
-                # Prevent a combo from containing itself (direct check)
                 if db_item.id == component_menu_item_db.id:
                     db.rollback()
                     raise ValueError(f"A combo item cannot contain itself as a component. Item ID: {db_item.id}")
@@ -355,31 +354,44 @@ def create_menu_item(db: Session, restaurant_id: str, item: schemas.MenuItemCrea
             if component_objects_to_add:
                 db.add_all(component_objects_to_add)
             
-            db.commit() # Commit main item and all components together
+            db.commit()
         except Exception as e:
             db.rollback()
             logger.error(f"Error creating combo menu item '{item.name}' components: {e}", exc_info=True)
-            # More specific error or re-raise generic one
             raise ValueError(f"Failed to create combo item and its components: {str(e)}")
             
-    else: # Regular item or item_type not COMBO
-        if item.components and len(item.components) > 0: # Schema validator should prevent this
+    else: 
+        if item.components and len(item.components) > 0:
             db.rollback()
             raise ValueError("Components should not be provided for a regular item type.")
-        db.commit() # Commit the regular item
+        db.commit()
 
     db.refresh(db_item)
-    # For combos, after refresh, db_item.components should be populated if lazy='selectin' works as expected
-    # or if explicitly loaded in a subsequent get query.
-    # To ensure components are available immediately after creation for the return:
-    if db_item.item_type == schemas.ItemType.COMBO.value:
-        # Re-fetch with explicit loading for the return value, as refresh might not populate nested relationships deeply enough.
-        # This is a common pattern: create, then get with full loading options for the response.
-        # However, db.refresh should respect the lazy loading strategy on the relationships.
-        # Let's rely on the refresh and the model's lazy loading config for now.
-        # If components are not present in the returned db_item, we'd need to re-query like get_menu_item(db, db_item.id, restaurant_id)
-        pass
+    return db_item
 
+def add_menu_item_to_session(db: Session, restaurant_id: str, item: schemas.MenuItemCreate) -> models.MenuItem:
+    """
+    Prepares a MenuItem model instance and adds it to the session without committing.
+    Includes handling for variations. Intended for use in bulk operations.
+    The item schema (MenuItemCreate) already includes inventory_available and inventory_quantity.
+    """
+    variations_data = None
+    if item.variations:
+        variations_data = [v.dict() for v in item.variations] 
+
+    # item_data will now include inventory_available and inventory_quantity from the schema
+    item_data = item.dict(exclude={'restaurant_id', 'variations', 'components'})
+    
+    db_item = models.MenuItem(
+        **item_data, 
+        restaurant_id=restaurant_id,
+        variations=variations_data
+    )
+    db.add(db_item)
+    # Note: For bulk operations, components for COMBO items are not handled by this specific function.
+    # The calling function (e.g., bulk_create_menu_items endpoint) would need to handle
+    # component creation separately if combos are to be created in bulk with components.
+    # This function's primary role is adding the base MenuItem (with its direct attributes like inventory) to the session.
     return db_item
 
 def get_menu_item(db: Session, item_id: int, restaurant_id: str) -> Optional[models.MenuItem]:
@@ -399,30 +411,20 @@ def get_menu_item(db: Session, item_id: int, restaurant_id: str) -> Optional[mod
     return query.first()
 
 def update_menu_item(db: Session, item_id: int, restaurant_id: str, item_update: schemas.MenuItemCreate):
-    db_item = get_menu_item(db, item_id, restaurant_id) # Use the enhanced get_menu_item
+    db_item = get_menu_item(db, item_id, restaurant_id)
     if not db_item:
         return None
 
-    # Handle item_type change carefully.
-    # If changing from COMBO to REGULAR, existing components should be deleted.
-    # If changing from REGULAR to COMBO, new components must be provided.
-    # If item_type is not changing but components are, update them.
+    # item_update schema (MenuItemCreate) now contains inventory_available and inventory_quantity.
+    # These will be part of update_data.
+    update_data = item_update.dict(exclude_unset=True, exclude={'components'}) 
 
-    update_data = item_update.dict(exclude_unset=True, exclude={'components'}) # Exclude components for direct setattr
-
-    # Update standard fields first
     for field, value in update_data.items():
         if field == 'item_type' and value != db_item.item_type:
-            # Handle type change implications for components
             if value == schemas.ItemType.REGULAR.value and db_item.item_type == schemas.ItemType.COMBO.value:
-                # Deleting components: The relationship cascade on MenuItem.components should handle this
-                # when db_item.components is cleared or items removed.
-                # For explicit control:
-                for comp_link in list(db_item.components): # Iterate over a copy
+                for comp_link in list(db_item.components): 
                     db.delete(comp_link)
-                # db_item.components.clear() # Alternative way if cascade works from parent side
                 logger.info(f"Menu item {db_item.id} changed from COMBO to REGULAR. Components cleared.")
-
             elif value == schemas.ItemType.COMBO.value and db_item.item_type == schemas.ItemType.REGULAR.value:
                 if not item_update.components:
                     db.rollback()
@@ -431,15 +433,11 @@ def update_menu_item(db: Session, item_id: int, restaurant_id: str, item_update:
         
         setattr(db_item, field, value)
 
-    # Handle component updates for COMBO items (or if type changed to COMBO)
     if db_item.item_type == schemas.ItemType.COMBO.value:
-        # Delete existing components before adding new ones to simplify logic (idempotent update)
-        # This relies on the cascade delete for ComboItemComponent when objects are removed from db_item.components list
-        # or deleted directly.
-        existing_component_links = list(db_item.components) # Make a copy before modifying
+        existing_component_links = list(db_item.components) 
         for comp_link in existing_component_links:
             db.delete(comp_link)
-        db.flush() # Ensure deletions are processed before adding potentially same component items
+        db.flush() 
 
         if item_update.components:
             new_component_links = []
@@ -452,28 +450,23 @@ def update_menu_item(db: Session, item_id: int, restaurant_id: str, item_update:
                 if not component_menu_item_db:
                     db.rollback()
                     raise ValueError(f"Invalid component item ID {comp_data.menu_item_id} for combo update.")
-                if db_item.id == component_menu_item_db.id: # Prevent self-reference
+                if db_item.id == component_menu_item_db.id: 
                     db.rollback()
                     raise ValueError("A combo item cannot contain itself.")
 
                 new_link = models.ComboItemComponent(
-                    combo_menu_item_id=db_item.id, # db_item.id is already known
+                    combo_menu_item_id=db_item.id,
                     component_menu_item_id=comp_data.menu_item_id,
                     quantity=comp_data.quantity
                 )
                 new_component_links.append(new_link)
             db.add_all(new_component_links)
-        elif db_item.item_type == schemas.ItemType.COMBO.value: # Combo type but no components provided
+        elif db_item.item_type == schemas.ItemType.COMBO.value: 
             db.rollback()
             raise ValueError("Combo items must have components. To make it regular, change item_type.")
-
-
     try:
         db.commit()
         db.refresh(db_item)
-        # Similar to create, ensure the returned object has components loaded for the response
-        # This refresh should work due to lazy='selectin' and explicit loads in get_menu_item.
-        # If not, a re-fetch might be needed: return get_menu_item(db, item_id, restaurant_id)
     except Exception as e:
         db.rollback()
         logger.error(f"Error updating menu item {item_id}: {e}", exc_info=True)
@@ -768,10 +761,16 @@ def mark_order_paid(
     if customer_uid:
         db_customer = get_user(db, customer_uid) # Reusing existing get_user CRUD
         if not db_customer:
-            raise ValueError(f"Customer with UID {customer_uid} not found.")
-        # You might want to check if db_customer.role is 'customer' or similar if needed
-        db_order.customer_uid = customer_uid
-        logging.info(f"Order {order_id} associated with customer UID {customer_uid}.")
+            # Instead of raising an error, log a warning and proceed.
+            # The order will be marked paid, but not associated with this non-existent customer_uid.
+            logging.warning(f"Attempted to associate order {order_id} with non-existent customer UID {customer_uid}. Proceeding without association.")
+            # Ensure db_order.customer_uid is not set or is cleared if previously set to something else by this call.
+            # However, if the goal is to only set it if found, and leave it if not found (and not clear if already set), then no action on db_order.customer_uid here.
+            # For now, we will only set it if found.
+        else:
+            # You might want to check if db_customer.role is 'customer' or similar if needed
+            db_order.customer_uid = customer_uid
+            logging.info(f"Order {order_id} associated with customer UID {customer_uid}.")
     elif db_order.customer_uid: # If customer_uid is not provided in this call, but already exists on order, keep it.
         pass # No change to customer_uid
     # else: customer_uid is None and db_order.customer_uid is also None - no action needed

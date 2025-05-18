@@ -1,0 +1,10 @@
+2025-05-18 17:12:22,494 - app.utils.bhashsms_automation - INFO - === Starting new BhashSMS session ===
+2025-05-18 17:12:23,652 - app.main - INFO - Starting Loyalty Backend API in development mode (version: 1.0.0)
+2025-05-18 17:12:23,659 - app.main - INFO - Creating database tables if they don't exist - SKIPPED (handled by Alembic)
+2025-05-18 17:12:23,663 - app.main - INFO - Database connection established (models imported, create_all skipped)
+2025-05-18 17:13:53,693 - app.main - INFO - Shutting down Loyalty Backend API
+2025-05-18 17:13:53,694 - app.utils.bhashsms_automation - INFO - Initializing BhashSMS automation
+2025-05-18 17:13:56,120 - app.utils.bhashsms_automation - ERROR - Failed to initialize Chrome WebDriver: Message: Service C:\Users\gunj0\.cache\selenium\chromedriver\win64\136.0.7103.94\chromedriver.exe unexpectedly exited. Status code was: 3221225786
+
+2025-05-18 17:13:56,121 - app.main - ERROR - Error during shutdown: Message: Service C:\Users\gunj0\.cache\selenium\chromedriver\win64\136.0.7103.94\chromedriver.exe unexpectedly exited. Status code was: 3221225786
+

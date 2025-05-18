@@ -1,0 +1,3 @@
+2025-05-12 10:23:58,708 - app.utils.bhashsms_automation - INFO - === Starting new BhashSMS session ===
+2025-05-12 10:23:58,850 - app.utils.bhashsms_automation - INFO - Initializing BhashSMS automation
+2025-05-12 10:24:01,266 - app.utils.bhashsms_automation - INFO - Chrome WebDriver initialized successfully

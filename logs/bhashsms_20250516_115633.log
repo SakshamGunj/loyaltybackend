@@ -1,0 +1,22 @@
+2025-05-16 11:56:33,635 - app.utils.bhashsms_automation - INFO - === Starting new BhashSMS session ===
+2025-05-16 11:56:33,792 - app.main - INFO - Starting Loyalty Backend API in development mode (version: 1.0.0)
+2025-05-16 11:56:33,792 - app.main - INFO - Creating database tables if they don't exist
+2025-05-16 11:56:33,826 - app.main - INFO - Database tables created successfully
+2025-05-16 11:56:33,826 - app.main - INFO - Database connection established
+2025-05-16 11:57:26,282 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-05-16 11:58:26,506 - root - ERROR - Error creating/updating order or notifying admins: Menu item not found or unavailable: 1
+Traceback (most recent call last):
+  File "C:\Users\gunj0\CascadeProjects\loyalty_backend\app\api\endpoints\ordering.py", line 278, in place_order
+    order_obj = crud.create_order(
+                ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\CascadeProjects\loyalty_backend\app\crud.py", line 290, in create_order
+    raise Exception(f"Menu item not found or unavailable: {item.item_id}")
+Exception: Menu item not found or unavailable: 1
+2025-05-16 12:24:39,537 - app.main - INFO - Shutting down Loyalty Backend API
+2025-05-16 12:24:39,546 - app.utils.bhashsms_automation - INFO - Initializing BhashSMS automation
+2025-05-16 12:24:44,624 - app.utils.bhashsms_automation - INFO - Chrome WebDriver initialized successfully

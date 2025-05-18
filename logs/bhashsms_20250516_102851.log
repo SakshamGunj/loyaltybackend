@@ -1,0 +1,71 @@
+2025-05-16 10:28:51,132 - app.utils.bhashsms_automation - INFO - === Starting new BhashSMS session ===
+2025-05-16 10:28:51,407 - app.main - INFO - Starting Loyalty Backend API in development mode (version: 1.0.0)
+2025-05-16 10:28:51,408 - app.main - INFO - Creating database tables if they don't exist
+2025-05-16 10:28:51,447 - app.main - INFO - Database tables created successfully
+2025-05-16 10:28:51,449 - app.main - INFO - Database connection established
+2025-05-16 10:28:52,609 - root - ERROR - Error creating/updating order or notifying admins: (sqlite3.OperationalError) no such column: menu_items_1.image_url
+[SQL: SELECT anon_1.orders_id AS anon_1_orders_id, anon_1.orders_user_uid AS anon_1_orders_user_uid, anon_1.orders_user_role AS anon_1_orders_user_role, anon_1.orders_table_number AS anon_1_orders_table_number, anon_1.orders_created_at AS anon_1_orders_created_at, anon_1.orders_updated_at AS anon_1_orders_updated_at, anon_1.orders_status AS anon_1_orders_status, anon_1.orders_total_cost AS anon_1_orders_total_cost, anon_1.orders_payment_status AS anon_1_orders_payment_status, anon_1.orders_promo_code_id AS anon_1_orders_promo_code_id, anon_1.orders_restaurant_id AS anon_1_orders_restaurant_id, anon_1.orders_restaurant_name AS anon_1_orders_restaurant_name, anon_1.orders_order_number AS anon_1_orders_order_number, menu_items_1.id AS menu_items_1_id, menu_items_1.restaurant_id AS menu_items_1_restaurant_id, menu_items_1.name AS menu_items_1_name, menu_items_1.description AS menu_items_1_description, menu_items_1.price AS menu_items_1_price, menu_items_1.available AS menu_items_1_available, menu_items_1.category_id AS menu_items_1_category_id, menu_items_1.image_url AS menu_items_1_image_url, menu_items_1.created_at AS menu_items_1_created_at, order_items_1.id AS order_items_1_id, order_items_1.order_id AS order_items_1_order_id, order_items_1.item_id AS order_items_1_item_id, order_items_1.quantity AS order_items_1_quantity, order_items_1.price AS order_items_1_price, order_items_1.options AS order_items_1_options 
+FROM (SELECT orders.id AS orders_id, orders.user_uid AS orders_user_uid, orders.user_role AS orders_user_role, orders.table_number AS orders_table_number, orders.created_at AS orders_created_at, orders.updated_at AS orders_updated_at, orders.status AS orders_status, orders.total_cost AS orders_total_cost, orders.payment_status AS orders_payment_status, orders.promo_code_id AS orders_promo_code_id, orders.restaurant_id AS orders_restaurant_id, orders.restaurant_name AS orders_restaurant_name, orders.order_number AS orders_order_number 
+FROM orders 
+WHERE orders.restaurant_id = ? AND orders.table_number = ? AND orders.payment_status = ?
+ LIMIT ? OFFSET ?) AS anon_1 LEFT OUTER JOIN order_items AS order_items_1 ON anon_1.orders_id = order_items_1.order_id LEFT OUTER JOIN menu_items AS menu_items_1 ON menu_items_1.id = order_items_1.item_id]
+[parameters: ('baba', '4', 'Pending', 1, 0)]
+(Background on this error at: https://sqlalche.me/e/14/e3q8)
+Traceback (most recent call last):
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\base.py", line 1771, in _execute_context
+    self.dialect.do_execute(
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\default.py", line 717, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: menu_items_1.image_url
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\gunj0\CascadeProjects\loyalty_backend\app\api\endpoints\ordering.py", line 246, in place_order
+    existing_unpaid_order_model = crud.get_unpaid_order_by_table(
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\CascadeProjects\loyalty_backend\app\crud.py", line 1036, in get_unpaid_order_by_table
+    ).first()
+      ^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\orm\query.py", line 2762, in first
+    return self.limit(1)._iter().first()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\orm\query.py", line 2846, in _iter
+    result = self.session.execute(
+             ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\orm\session.py", line 1689, in execute
+    result = conn._execute_20(statement, params or {}, execution_options)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\base.py", line 1583, in _execute_20
+    return meth(self, args_10style, kwargs_10style, execution_options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\sql\elements.py", line 323, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\base.py", line 1452, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\base.py", line 1814, in _execute_context
+    self._handle_dbapi_exception(
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\base.py", line 1995, in _handle_dbapi_exception
+    util.raise_(
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\util\compat.py", line 207, in raise_
+    raise exception
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\base.py", line 1771, in _execute_context
+    self.dialect.do_execute(
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\engine\default.py", line 717, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: menu_items_1.image_url
+[SQL: SELECT anon_1.orders_id AS anon_1_orders_id, anon_1.orders_user_uid AS anon_1_orders_user_uid, anon_1.orders_user_role AS anon_1_orders_user_role, anon_1.orders_table_number AS anon_1_orders_table_number, anon_1.orders_created_at AS anon_1_orders_created_at, anon_1.orders_updated_at AS anon_1_orders_updated_at, anon_1.orders_status AS anon_1_orders_status, anon_1.orders_total_cost AS anon_1_orders_total_cost, anon_1.orders_payment_status AS anon_1_orders_payment_status, anon_1.orders_promo_code_id AS anon_1_orders_promo_code_id, anon_1.orders_restaurant_id AS anon_1_orders_restaurant_id, anon_1.orders_restaurant_name AS anon_1_orders_restaurant_name, anon_1.orders_order_number AS anon_1_orders_order_number, menu_items_1.id AS menu_items_1_id, menu_items_1.restaurant_id AS menu_items_1_restaurant_id, menu_items_1.name AS menu_items_1_name, menu_items_1.description AS menu_items_1_description, menu_items_1.price AS menu_items_1_price, menu_items_1.available AS menu_items_1_available, menu_items_1.category_id AS menu_items_1_category_id, menu_items_1.image_url AS menu_items_1_image_url, menu_items_1.created_at AS menu_items_1_created_at, order_items_1.id AS order_items_1_id, order_items_1.order_id AS order_items_1_order_id, order_items_1.item_id AS order_items_1_item_id, order_items_1.quantity AS order_items_1_quantity, order_items_1.price AS order_items_1_price, order_items_1.options AS order_items_1_options 
+FROM (SELECT orders.id AS orders_id, orders.user_uid AS orders_user_uid, orders.user_role AS orders_user_role, orders.table_number AS orders_table_number, orders.created_at AS orders_created_at, orders.updated_at AS orders_updated_at, orders.status AS orders_status, orders.total_cost AS orders_total_cost, orders.payment_status AS orders_payment_status, orders.promo_code_id AS orders_promo_code_id, orders.restaurant_id AS orders_restaurant_id, orders.restaurant_name AS orders_restaurant_name, orders.order_number AS orders_order_number 
+FROM orders 
+WHERE orders.restaurant_id = ? AND orders.table_number = ? AND orders.payment_status = ?
+ LIMIT ? OFFSET ?) AS anon_1 LEFT OUTER JOIN order_items AS order_items_1 ON anon_1.orders_id = order_items_1.order_id LEFT OUTER JOIN menu_items AS menu_items_1 ON menu_items_1.id = order_items_1.item_id]
+[parameters: ('baba', '4', 'Pending', 1, 0)]
+(Background on this error at: https://sqlalche.me/e/14/e3q8)
+2025-05-16 10:30:34,923 - app.main - INFO - Shutting down Loyalty Backend API
+2025-05-16 10:30:34,924 - app.utils.bhashsms_automation - INFO - Initializing BhashSMS automation
+2025-05-16 10:30:37,351 - app.utils.bhashsms_automation - ERROR - Failed to initialize Chrome WebDriver: Message: Service C:\Users\gunj0\.cache\selenium\chromedriver\win64\136.0.7103.94\chromedriver.exe unexpectedly exited. Status code was: 3221225786
+
+2025-05-16 10:30:37,351 - app.main - ERROR - Error during shutdown: Message: Service C:\Users\gunj0\.cache\selenium\chromedriver\win64\136.0.7103.94\chromedriver.exe unexpectedly exited. Status code was: 3221225786
+

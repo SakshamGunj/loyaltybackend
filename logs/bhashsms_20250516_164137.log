@@ -1,0 +1,55 @@
+2025-05-16 16:41:37,551 - app.utils.bhashsms_automation - INFO - === Starting new BhashSMS session ===
+2025-05-16 16:41:37,757 - app.main - INFO - Starting Loyalty Backend API in development mode (version: 1.0.0)
+2025-05-16 16:41:37,761 - app.main - INFO - Creating database tables if they don't exist - SKIPPED (handled by Alembic)
+2025-05-16 16:41:37,761 - app.main - INFO - Database connection established (models imported, create_all skipped)
+2025-05-16 16:41:49,951 - root - ERROR - Error creating/updating order or notifying admins: 'promo_code_id' is an invalid keyword argument for Order
+Traceback (most recent call last):
+  File "C:\Users\gunj0\CascadeProjects\loyalty_backend\app\api\endpoints\ordering.py", line 288, in place_order
+    order_obj = crud.create_order(
+                ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\CascadeProjects\loyalty_backend\app\crud\general.py", line 315, in create_order
+    db_order = models.Order(
+               ^^^^^^^^^^^^^
+  File "<string>", line 4, in __init__
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\orm\state.py", line 479, in _initialize_instance
+    with util.safe_reraise():
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 70, in __exit__
+    compat.raise_(
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\util\compat.py", line 207, in raise_
+    raise exception
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\orm\state.py", line 477, in _initialize_instance
+    return manager.original_init(*mixed[1:], **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\orm\decl_base.py", line 1142, in _declarative_constructor
+    raise TypeError(
+TypeError: 'promo_code_id' is an invalid keyword argument for Order
+2025-05-16 16:42:24,412 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-05-16 16:43:11,337 - root - ERROR - Error creating/updating order or notifying admins: 'promo_code_id' is an invalid keyword argument for Order
+Traceback (most recent call last):
+  File "C:\Users\gunj0\CascadeProjects\loyalty_backend\app\api\endpoints\ordering.py", line 288, in place_order
+    order_obj = crud.create_order(
+                ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\CascadeProjects\loyalty_backend\app\crud\general.py", line 315, in create_order
+    db_order = models.Order(
+               ^^^^^^^^^^^^^
+  File "<string>", line 4, in __init__
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\orm\state.py", line 479, in _initialize_instance
+    with util.safe_reraise():
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 70, in __exit__
+    compat.raise_(
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\util\compat.py", line 207, in raise_
+    raise exception
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\orm\state.py", line 477, in _initialize_instance
+    return manager.original_init(*mixed[1:], **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\orm\decl_base.py", line 1142, in _declarative_constructor
+    raise TypeError(
+TypeError: 'promo_code_id' is an invalid keyword argument for Order
+2025-05-16 16:44:29,107 - app.main - INFO - Shutting down Loyalty Backend API
+2025-05-16 16:44:29,107 - app.utils.bhashsms_automation - INFO - Initializing BhashSMS automation
+2025-05-16 16:44:30,967 - app.utils.bhashsms_automation - INFO - Chrome WebDriver initialized successfully

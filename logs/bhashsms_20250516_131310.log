@@ -1,0 +1,11 @@
+2025-05-16 13:13:10,816 - app.utils.bhashsms_automation - INFO - === Starting new BhashSMS session ===
+2025-05-16 13:13:11,026 - app.main - INFO - Starting Loyalty Backend API in development mode (version: 1.0.0)
+2025-05-16 13:13:11,027 - app.main - INFO - Creating database tables if they don't exist
+2025-05-16 13:13:11,037 - app.main - INFO - Database tables created successfully
+2025-05-16 13:13:11,038 - app.main - INFO - Database connection established
+2025-05-16 13:16:40,793 - root - INFO - Existing order baba_1 found for table 4. Current items: 1, total: 0.0
+2025-05-16 13:16:40,793 - root - INFO - Attempting to add 1 item entries.
+2025-05-16 13:16:40,855 - root - INFO - Items added to order baba_1. 1 items affected/added. New total items: 1, new total cost: 0.0
+2025-05-16 13:20:18,190 - app.main - INFO - Shutting down Loyalty Backend API
+2025-05-16 13:20:18,191 - app.utils.bhashsms_automation - INFO - Initializing BhashSMS automation
+2025-05-16 13:20:19,962 - app.utils.bhashsms_automation - INFO - Chrome WebDriver initialized successfully

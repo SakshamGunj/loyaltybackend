@@ -1,0 +1,22 @@
+2025-05-16 09:10:14,683 - app.utils.bhashsms_automation - INFO - === Starting new BhashSMS session ===
+2025-05-16 09:10:14,915 - app.main - INFO - Starting Loyalty Backend API in development mode (version: 1.0.0)
+2025-05-16 09:10:14,919 - app.main - INFO - Creating database tables if they don't exist
+2025-05-16 09:10:14,923 - app.main - INFO - Database tables created successfully
+2025-05-16 09:10:14,923 - app.main - INFO - Database connection established
+2025-05-16 09:10:22,873 - root - ERROR - Error creating order or notifying admins: (sqlite3.OperationalError) no such column: orders.order_number
+[SQL: SELECT orders.id AS orders_id, orders.user_uid AS orders_user_uid, orders.user_role AS orders_user_role, orders.table_number AS orders_table_number, orders.created_at AS orders_created_at, orders.status AS orders_status, orders.total_cost AS orders_total_cost, orders.payment_status AS orders_payment_status, orders.promo_code_id AS orders_promo_code_id, orders.restaurant_id AS orders_restaurant_id, orders.restaurant_name AS orders_restaurant_name, orders.order_number AS orders_order_number 
+FROM orders 
+WHERE orders.restaurant_id = ? ORDER BY orders.order_number DESC
+ LIMIT ? OFFSET ?]
+[parameters: ('baba', 1, 0)]
+(Background on this error at: https://sqlalche.me/e/14/e3q8)
+2025-05-16 09:11:18,524 - root - ERROR - Error creating order or notifying admins: (sqlite3.OperationalError) no such column: orders.order_number
+[SQL: SELECT orders.id AS orders_id, orders.user_uid AS orders_user_uid, orders.user_role AS orders_user_role, orders.table_number AS orders_table_number, orders.created_at AS orders_created_at, orders.status AS orders_status, orders.total_cost AS orders_total_cost, orders.payment_status AS orders_payment_status, orders.promo_code_id AS orders_promo_code_id, orders.restaurant_id AS orders_restaurant_id, orders.restaurant_name AS orders_restaurant_name, orders.order_number AS orders_order_number 
+FROM orders 
+WHERE orders.restaurant_id = ? ORDER BY orders.order_number DESC
+ LIMIT ? OFFSET ?]
+[parameters: ('baba1', 1, 0)]
+(Background on this error at: https://sqlalche.me/e/14/e3q8)
+2025-05-16 09:12:43,215 - app.main - INFO - Shutting down Loyalty Backend API
+2025-05-16 09:12:43,215 - app.utils.bhashsms_automation - INFO - Initializing BhashSMS automation
+2025-05-16 09:12:44,753 - app.utils.bhashsms_automation - INFO - Chrome WebDriver initialized successfully
