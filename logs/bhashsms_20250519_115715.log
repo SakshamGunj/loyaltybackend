@@ -1,0 +1,10 @@
+2025-05-19 11:57:15,278 - app.utils.bhashsms_automation - INFO - === Starting new BhashSMS session ===
+2025-05-19 11:57:19,942 - app.main - INFO - Starting Loyalty Backend API in development mode (version: 1.0.0)
+2025-05-19 11:57:19,947 - app.main - INFO - Creating database tables if they don't exist - SKIPPED (handled by Alembic)
+2025-05-19 11:57:19,948 - app.main - INFO - Database connection established (models imported, create_all skipped)
+2025-05-19 11:58:26,959 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "C:\Users\gunj0\AppData\Local\Programs\Python\Python312\Lib\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'

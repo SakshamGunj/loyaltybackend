@@ -768,9 +768,9 @@ def mark_order_paid(
             # However, if the goal is to only set it if found, and leave it if not found (and not clear if already set), then no action on db_order.customer_uid here.
             # For now, we will only set it if found.
         else:
-            # You might want to check if db_customer.role is 'customer' or similar if needed
-            db_order.customer_uid = customer_uid
-            logging.info(f"Order {order_id} associated with customer UID {customer_uid}.")
+        # You might want to check if db_customer.role is 'customer' or similar if needed
+        db_order.customer_uid = customer_uid
+        logging.info(f"Order {order_id} associated with customer UID {customer_uid}.")
     elif db_order.customer_uid: # If customer_uid is not provided in this call, but already exists on order, keep it.
         pass # No change to customer_uid
     # else: customer_uid is None and db_order.customer_uid is also None - no action needed

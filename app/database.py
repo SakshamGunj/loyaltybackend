@@ -1,11 +1,9 @@
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 import logging
 from pathlib import Path
 import tempfile
-from getpass import getpass
-import urllib.parse
 
 logger = logging.getLogger(__name__)
 
@@ -17,14 +15,30 @@ is_cloud_run = os.getenv("K_SERVICE") is not None or os.getenv("GOOGLE_CLOUD_PRO
 is_app_engine = os.getenv("GAE_ENV") is not None
 is_koyeb = os.getenv("KOYEB_APP_NAME") is not None
 
-# Use Render PostgreSQL instead of Supabase
-RENDER_DB_URL = "postgresql://tenversepos_user:00TrCMA1p1vsgiib0s3GTe6u8iYZ6Kzt@dpg-d0kstu7fte5s738vuil0-a.oregon-postgres.render.com/tenversepos"
+# Default to SQLite for local development
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./loyalty.db")
 
-# Use Render PostgreSQL by default
-DATABASE_URL = os.getenv("DATABASE_URL", RENDER_DB_URL)
+# Special handling for Google App Engine - this needs /tmp directory
+if is_app_engine:
+    logger.info("Running in Google App Engine environment")
+    
+    # Create a unique filename in /tmp to avoid conflicts
+    db_file = tempfile.gettempdir() + "/loyalty_" + str(os.getpid()) + ".db"
+    DATABASE_URL = f"sqlite:///{db_file}"
+    
+    # Ensure directory has proper permissions
+    try:
+        # Make sure /tmp exists and is writable
+        os.makedirs(tempfile.gettempdir(), exist_ok=True)
+        if os.path.exists(db_file):
+            os.chmod(db_file, 0o666)  # Full read/write permissions
+    except Exception as e:
+        logger.error(f"Error setting permissions: {e}")
+    
+    logger.info(f"Using App Engine writable path: {DATABASE_URL}")
 
 # Special handling for Google Cloud environments
-if is_cloud_run:
+elif is_cloud_run:
     logger.info("Running in Google Cloud Run environment")
     
     # Check for Cloud SQL connection
@@ -39,40 +53,32 @@ if is_cloud_run:
         DATABASE_URL = f"postgresql://{db_user}:{db_pass}@/{db_name}?host={socket_path}"
         logger.info(f"Using Cloud SQL connection: {DATABASE_URL.replace(db_pass, '****')}")
     else:
-        # Use Render PostgreSQL for Cloud Run
-        DATABASE_URL = RENDER_DB_URL
-        logger.info("Using Render PostgreSQL in Google Cloud")
+        # If Cloud SQL not configured, check for persistent disk
+        if os.path.isdir('/mnt/data'):
+            # Use Cloud Storage mounted as persistent disk
+            DATABASE_URL = "sqlite:////mnt/data/loyalty.db"
+            logger.info("Using persistent disk for SQLite in Google Cloud")
+        else:
+            # Fallback to local SQLite (will be ephemeral in Cloud Run)
+            DATABASE_URL = "sqlite:///./loyalty.db"
+            logger.warning("No persistent storage detected, database will be ephemeral")
             
 elif is_koyeb:
     logger.info("Running in Koyeb environment")
-    # Use Render PostgreSQL for Koyeb
-    DATABASE_URL = RENDER_DB_URL
-    logger.info("Using Render PostgreSQL in Koyeb")
-
-# If DATABASE_URL was provided as an environment variable, log it
-custom_db_url = os.getenv("DATABASE_URL")
-if custom_db_url:
-    logger.info("Using database URL from environment variable")
-else:
-    logger.info("Using Render PostgreSQL database by default")
-
-# Mask password in logs
-safe_db_url = DATABASE_URL
-if '@' in DATABASE_URL and ':' in DATABASE_URL.split('@')[0]:
-    parts = DATABASE_URL.split('@')
-    credentials = parts[0].split(':')
-    if len(credentials) > 2:
-        masked_url = f"{credentials[0]}:{credentials[1]}:****@{parts[1]}"
-        safe_db_url = masked_url
+    # For Koyeb, ensure db path is in a persistent location if volume is mounted
+    if os.path.isdir('/app/data'):
+        DATABASE_URL = "sqlite:////app/data/loyalty.db"
+        logger.info("Using persistent storage for SQLite in Koyeb")
     else:
-        masked_url = f"{credentials[0]}:****@{parts[1]}"
-        safe_db_url = masked_url
-logger.info(f"Database URL: {safe_db_url}")
+        # If no volume is mounted, use local file (note: this will be ephemeral)
+        DATABASE_URL = "sqlite:///./loyalty.db" 
+        logger.warning("No persistent storage detected, database will be ephemeral")
+
+logger.info(f"Database URL: {DATABASE_URL}")
 
 # Configuration options
 connect_args = {}
 if DATABASE_URL.startswith("sqlite"):
-    # This should rarely happen now, but keep the code for compatibility
     connect_args = {"check_same_thread": False}
     logger.info("Using SQLite database")
     
@@ -92,42 +98,10 @@ if DATABASE_URL.startswith("sqlite"):
         db_dir = BASE_DIR / db_path.parent
         os.makedirs(db_dir, exist_ok=True)
 else:
-    # PostgreSQL specific configuration
-    logger.info("Using PostgreSQL database")
-    # Add connection pooling for PostgreSQL
-    engine_kwargs = {
-        "pool_size": 10,
-        "max_overflow": 20,
-        "pool_recycle": 3600,
-        "pool_pre_ping": True
-    }
-
-# Log the connection details (without sensitive info)
-logger.info(f"Connecting to database with URL: {safe_db_url}")
+    logger.info(f"Using database: {DATABASE_URL.split('@')[0]}")
 
 # Create engine and session
-engine = create_engine(
-    DATABASE_URL, 
-    connect_args=connect_args, 
-    **(engine_kwargs if not DATABASE_URL.startswith("sqlite") else {})
-)
-
-# Try to connect to the database right away to validate configuration
-try:
-    connection = engine.connect()
-    result = connection.execute(text("SELECT 1"))
-    connection.close()
-    logger.info("Successfully validated database connection at startup")
-except Exception as e:
-    logger.error(f"Database connection validation failed: {e}")
-    logger.error(f"Connection URL used (redacted): {safe_db_url}")
-    if "Wrong password" in str(e):
-        logger.error("Authentication error! Please check your database settings")
-    elif "could not translate host name" in str(e):
-        logger.error("DNS resolution error! Please check your network connection")
-    else:
-        logger.error("Please check your database settings and network connectivity")
-
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

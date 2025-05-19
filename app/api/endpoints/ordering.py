@@ -575,7 +575,7 @@ async def all_orders_history(
     """
     # Verify admin access for the restaurant
     await verify_restaurant_admin(db, restaurant_id, current_user)
-
+    
     # Dates are now automatically parsed by FastAPI from ISO 8601 strings to datetime objects.
     # No manual parsing needed here.
     
